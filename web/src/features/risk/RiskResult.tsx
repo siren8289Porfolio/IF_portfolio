@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Page, Assessment } from '@/shared/types/appTypes';
 import { motion } from 'motion/react';
 import { AlertTriangle, Info, Send, Briefcase, MapPin, Clock, Calendar, AlignLeft, Plus } from 'lucide-react';
+import { getRiskDetail } from '@/shared/api/assessments';
 
 interface RiskResultProps {
   onNavigate: (page: Page) => void;
@@ -10,10 +11,46 @@ interface RiskResultProps {
 }
 
 export function RiskResult({ onNavigate, assessment, onSave }: RiskResultProps) {
-  const score = assessment.riskScore || 0;
-  const level = assessment.riskLevel || 'Low';
+  const [score, setScore] = useState(assessment.riskScore || 0);
+  const [level, setLevel] = useState<Assessment['riskLevel']>(assessment.riskLevel || 'Low');
+  const [factorTexts, setFactorTexts] = useState<string[]>(assessment.riskFactors || []);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [guidance, setGuidance] = useState<string | null>(null);
+  const [disclaimer, setDisclaimer] = useState<string | null>(null);
+
   const jobMatches = assessment.jobMatches || [];
   const isCompleted = assessment.status === 'Completed' || assessment.status === 'Matched';
+
+  useEffect(() => {
+    const id = assessment.id ? Number(assessment.id) : NaN;
+    if (!assessment.id || Number.isNaN(id)) {
+      return;
+    }
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const detail = await getRiskDetail(id);
+        if (cancelled) return;
+        setScore(detail.riskScore ?? 0);
+        const newLevel: Assessment['riskLevel'] =
+          detail.riskGrade === 'HIGH' ? 'High' :
+          detail.riskGrade === 'LOW' ? 'Low' : 'Medium';
+        setLevel(newLevel);
+        setFactorTexts(detail.factorSummaries || []);
+        setSummary(detail.summary || null);
+        setGuidance(detail.guidance || null);
+        setDisclaimer(detail.disclaimer || null);
+      } catch {
+        // 실패 시 기존 값(로컬 state)에 그대로 둠
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [assessment.id]);
 
   const getLevelInfo = () => {
     switch(level) {
@@ -99,15 +136,25 @@ export function RiskResult({ onNavigate, assessment, onSave }: RiskResultProps) 
               <div className="flex items-start gap-4">
                 <Info className={`${levelInfo.color} shrink-0 mt-1`} size={24} />
                 <div>
-                  <h3 className={`font-bold ${levelInfo.color} mb-2 text-lg`}>구간 해석</h3>
-                  <p className="text-gray-700 leading-relaxed text-sm md:text-base">
-                    {level === 'High'
-                      ? '즉각적인 안전 조치가 필요한 고위험군입니다. 야외 활동 및 고강도 노동을 제한해야 합니다.'
-                      : level === 'Medium'
-                      ? '일부 환경에서 위험이 예상됩니다. 주기적인 모니터링과 적절한 휴식이 권장됩니다.'
-                      : '일상적인 활동에 큰 제약이 없는 안전한 상태입니다.'
-                    }
+                  <h3 className={`font-bold ${levelInfo.color} mb-2 text-lg`}>AI 해석 요약</h3>
+                  <p className="text-gray-700 leading-relaxed text-sm md:text-base whitespace-pre-line">
+                    {summary ||
+                      (level === 'High'
+                        ? '즉각적인 안전 조치가 필요한 고위험군입니다. 야외 활동 및 고강도 노동을 제한해야 합니다.'
+                        : level === 'Medium'
+                        ? '일부 환경에서 위험이 예상됩니다. 주기적인 모니터링과 적절한 휴식이 권장됩니다.'
+                        : '일상적인 활동에 큰 제약이 없는 안전한 상태입니다.')}
                   </p>
+                  {guidance && (
+                    <p className="text-gray-600 text-xs md:text-sm mt-3 whitespace-pre-line">
+                      {guidance}
+                    </p>
+                  )}
+                  {disclaimer && (
+                    <p className="text-gray-400 text-xs mt-3 whitespace-pre-line">
+                      {disclaimer}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -118,16 +165,17 @@ export function RiskResult({ onNavigate, assessment, onSave }: RiskResultProps) 
                 주요 기여 요인
               </h3>
               <div className="space-y-3">
-                {assessment.riskFactors && assessment.riskFactors.length > 0 ? (
-                  assessment.riskFactors.map((factor, idx) => (
+                {factorTexts && factorTexts.length > 0 ? (
+                  factorTexts.map((factor, idx) => (
                     <div key={idx} className="bg-gray-50 px-5 py-4 rounded-xl border border-gray-100 flex items-center justify-between">
                       <span className="text-gray-700 font-medium">{factor}</span>
                       <span className="text-xs text-red-500 font-bold bg-white border border-red-100 px-2 py-1 rounded-md shadow-sm">+ 위험요인</span>
                     </div>
                   ))
                 ) : (
-                  <div className="bg-gray-50 px-5 py-4 rounded-xl border border-gray-100 text-gray-500 text-center">
-                    특이 위험 요인이 발견되지 않았습니다.
+                  <div className="bg-gray-50 px-5 py-4 rounded-xl border border-gray-100 text-gray-500 text-center py-6">
+                    <p className="font-medium">요인별 설명이 없습니다.</p>
+                    <p className="text-xs mt-1">AI 설명이 생성되지 않았거나, 위험도 계산 시 설명 API가 호출되지 않았을 수 있습니다. (Gemini API 키·FastAPI 서버 확인)</p>
                   </div>
                 )}
               </div>

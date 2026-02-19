@@ -18,7 +18,7 @@ export default function LoginScreen() {
     setTimeout(async () => {
       await setAuthenticated(true);
       Toast.show({ type: "success", text1: "본인 인증이 완료되었습니다." });
-      router.replace("/guide");
+      router.replace("/home");
     }, 800);
   };
 

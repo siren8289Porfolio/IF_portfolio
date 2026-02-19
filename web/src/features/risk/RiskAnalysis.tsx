@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Page, Assessment } from '@/shared/types/appTypes';
 import { motion } from 'motion/react';
 import { Brain } from 'lucide-react';
+import { computeRisk } from '@/shared/api/assessments';
 
 interface RiskAnalysisProps {
   onNavigate: (page: Page) => void;
@@ -12,49 +13,41 @@ interface RiskAnalysisProps {
 export function RiskAnalysis({ onNavigate, currentAssessment, onUpdateAssessment }: RiskAnalysisProps) {
 
   useEffect(() => {
-    // Simulate AI calculation
-    const timer = setTimeout(() => {
-      // Mock Algorithm
-      let score = 20;
-      const factors: string[] = [];
+    let cancelled = false;
 
-      if (currentAssessment.age && currentAssessment.age >= 70) {
-        score += 30;
-        factors.push('고령 (70세 이상)');
-      } else if (currentAssessment.age && currentAssessment.age >= 60) {
-        score += 15;
+    const run = async () => {
+      const id = currentAssessment.id ? Number(currentAssessment.id) : NaN;
+      if (!currentAssessment.id || Number.isNaN(id)) {
+        onNavigate('dashboard');
+        return;
       }
-
-      if (currentAssessment.healthStatus === 'bad') {
-        score += 40;
-        factors.push('건강 상태 주의');
-      } else if (currentAssessment.healthStatus === 'average') {
-        score += 10;
+      try {
+        await computeRisk(id);
+        if (cancelled) return;
+        // 상태만 'Analyzed'로 표시해 두고, 실제 점수/설명은 RiskResult에서 불러옴
+        onUpdateAssessment({
+          status: 'Analyzed',
+        });
+      } catch {
+        if (cancelled) return;
+        onUpdateAssessment({
+          riskScore: 0,
+          riskLevel: 'Low',
+          riskFactors: [],
+          status: 'Analyzed',
+        });
+      } finally {
+        if (!cancelled) {
+          onNavigate('risk-result');
+        }
       }
+    };
 
-      if (currentAssessment.workConditions?.includes('야외 근무')) {
-        score += 10;
-        factors.push('야외 근무 환경');
-      }
+    run();
 
-      // Cap at 95
-      score = Math.min(score, 95);
-
-      let level: 'Low' | 'Medium' | 'High' = 'Low';
-      if (score >= 70) level = 'High';
-      else if (score >= 40) level = 'Medium';
-
-      onUpdateAssessment({
-        riskScore: score,
-        riskLevel: level,
-        riskFactors: factors,
-        status: 'Analyzed'
-      });
-
-      onNavigate('risk-result');
-    }, 3000);
-
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+    };
   }, [currentAssessment, onNavigate, onUpdateAssessment]);
 
   return (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ArrowLeft, AlertCircle, AlertTriangle, CheckCircle } from "lucide-react-native";
+import { ArrowLeft } from "lucide-react-native";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { router, useLocalSearchParams } from "expo-router";
@@ -11,7 +11,6 @@ import { PrimaryButton } from "@/ui/PrimaryButton";
 import { Screen } from "@/ui/Screen";
 import { getRecords } from "@/shared/storage/riskStorage";
 import type { RiskRecord } from "@/shared/types/risk";
-import { getRiskLevel } from "@/shared/utils/risk";
 
 export default function RecordDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,7 +21,7 @@ export default function RecordDetailScreen() {
       const records = await getRecords();
       const found = records.find((item) => item.id === id);
       if (!found) {
-        router.replace("/records");
+        router.replace("/job-list");
         return;
       }
       setRecord(found);
@@ -31,26 +30,17 @@ export default function RecordDetailScreen() {
     loadRecord();
   }, [id]);
 
-  const riskLevel = useMemo(() => (record ? getRiskLevel(record.riskScore) : null), [record]);
-
-  if (!record || !riskLevel) {
+  if (!record) {
     return <Screen />;
   }
-
-  const Icon =
-    riskLevel.level === "매우 높음"
-      ? AlertTriangle
-      : riskLevel.level === "높음" || riskLevel.level === "보통"
-      ? AlertCircle
-      : CheckCircle;
 
   return (
     <Screen scroll>
       <View style={styles.header}>
-        <Pressable onPress={() => router.push("/records")} style={styles.backButton}>
+        <Pressable onPress={() => router.push("/job-list")} style={styles.backButton}>
           <ArrowLeft color={colors.text} size={20} />
         </Pressable>
-        <Text style={styles.headerTitle}>기록 상세</Text>
+        <Text style={styles.headerTitle}>배치 결과 상세</Text>
       </View>
 
       <View style={styles.stack}>
@@ -58,24 +48,27 @@ export default function RecordDetailScreen() {
           <Text style={styles.dateText}>
             {format(new Date(record.timestamp), "yyyy년 MM월 dd일 HH:mm", { locale: ko })}
           </Text>
-          <View style={[styles.scoreCard, { backgroundColor: riskLevel.backgroundColor }]}>
-            <Icon color={riskLevel.textColor} size={64} />
-            <View style={styles.scoreRow}>
-              <Text style={styles.scoreValue}>{record.riskScore}</Text>
-              <Text style={styles.scoreMax}>/ 100</Text>
-            </View>
-            <Text style={[styles.scoreLabel, { color: riskLevel.textColor }]}>{riskLevel.level}</Text>
-          </View>
         </Card>
 
         <Card style={styles.card}>
-          <Text style={styles.sectionTitle}>상세 정보</Text>
-          <DetailRow label="연령" value={`${record.age}세`} />
-          <DetailRow label="직무" value={record.job} />
-          <DetailRow label="신체 기능 수준" value={record.physicalLevel} />
-          <DetailRow label="기저 질환" value={record.hasMedicalCondition ? "있음" : "없음"} />
-          <DetailRow label="근무 시간" value={record.workHours} />
-          <DetailRow label="근무 강도" value={record.workIntensity} isLast />
+          <Text style={styles.sectionTitle}>매칭된 일자리{record.jobMatches?.length ? ` (${record.jobMatches.length}건)` : ""}</Text>
+          {record.jobMatches && record.jobMatches.length > 0 ? (
+            record.jobMatches.map((m) => (
+              <View key={m.id} style={styles.matchBlock}>
+                <Text style={styles.matchJobName}>{m.jobName}</Text>
+                <Text style={styles.matchMeta}>{m.location}</Text>
+                <Text style={styles.matchMeta}>{m.time}</Text>
+                {m.workDays?.length ? (
+                  <Text style={styles.matchMeta}>요일: {m.workDays.join(", ")}</Text>
+                ) : null}
+                {m.description ? (
+                  <Text style={styles.matchDesc}>{m.description}</Text>
+                ) : null}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyMatchText}>매칭된 일자리가 없습니다.</Text>
+          )}
         </Card>
 
         <PrimaryButton label="홈으로 돌아가기" onPress={() => router.replace("/home")} />
@@ -129,31 +122,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.mutedText,
   },
-  scoreCard: {
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    gap: 8,
-  },
-  scoreRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 6,
-  },
-  scoreValue: {
-    fontSize: 46,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  scoreMax: {
-    fontSize: 16,
-    color: colors.mutedText,
-    paddingBottom: 6,
-  },
-  scoreLabel: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
@@ -178,5 +146,30 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: "600",
+  },
+  matchBlock: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 4,
+  },
+  matchJobName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  matchMeta: {
+    fontSize: 13,
+    color: colors.mutedText,
+  },
+  matchDesc: {
+    fontSize: 13,
+    color: colors.text,
+    marginTop: 4,
+  },
+  emptyMatchText: {
+    fontSize: 13,
+    color: colors.mutedText,
+    marginTop: 8,
   },
 });

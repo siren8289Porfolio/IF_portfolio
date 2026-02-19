@@ -1,0 +1,18 @@
+# Local: PostgreSQL (postgres 계정, 웹·앱 동일 백엔드). DB: createdb if_spring
+# 포트 8080 = 웹 프론트 NEXT_PUBLIC_API_URL=http://localhost:8080
+server:
+  port: 8080
+  address: 0.0.0.0  # 실기기에서 맥 IP로 접속 가능하도록
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/if_spring
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false

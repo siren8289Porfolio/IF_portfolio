@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { ScrollViewProps } from "react-native";
 import type { ViewStyle } from "react-native";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,6 +11,7 @@ type ScreenProps = {
   scroll?: boolean;
   contentStyle?: ViewStyle;
   backgroundColor?: string;
+  scrollViewProps?: Partial<ScrollViewProps>;
 };
 
 export function Screen({
@@ -17,6 +19,7 @@ export function Screen({
   scroll = false,
   contentStyle,
   backgroundColor,
+  scrollViewProps,
 }: ScreenProps) {
   const safeAreaStyle = [
     styles.safeArea,
@@ -26,7 +29,10 @@ export function Screen({
   if (scroll) {
     return (
       <SafeAreaView style={safeAreaStyle}>
-        <ScrollView contentContainerStyle={[styles.scrollContent, contentStyle]}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, contentStyle]}
+          {...scrollViewProps}
+        >
           {children}
         </ScrollView>
       </SafeAreaView>

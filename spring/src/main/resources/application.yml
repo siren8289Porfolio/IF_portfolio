@@ -1,3 +1,10 @@
+# PostgreSQL (웹·앱 공통 백엔드). DB/계정: createdb -O if_user if_spring && createuser -P if_user
+# FastAPI(위험도/설명) 주소. ai 서버: cd ai && uvicorn src.app.main:app --port 8000
+app:
+  ai:
+    base-url: http://localhost:8000
+server:
+  address: 0.0.0.0  # 실기기에서 맥 IP로 접속 가능하도록
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/if_spring
@@ -5,7 +12,7 @@ spring:
     password: change-me
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect

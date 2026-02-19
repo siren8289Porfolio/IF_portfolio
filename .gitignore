@@ -4,3 +4,6 @@ web/.next/
 dist/
 build/
 
+# API 키 등 비밀값 (복사 후 .env에 실제 값 입력)
+.env
+*.env.local

@@ -1,3 +1,5 @@
-import RecordListScreen from "@/features/records/RecordListScreen";
+import { Redirect } from "expo-router";
 
-export default RecordListScreen;
+export default function RecordsIndex() {
+  return <Redirect href="/home" />;
+}

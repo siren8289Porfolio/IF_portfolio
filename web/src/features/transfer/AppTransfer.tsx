@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Page, Assessment } from '@/shared/types/appTypes';
 import { motion } from 'motion/react';
 import { Check, Smartphone, Send, Server } from 'lucide-react';
+import { saveJobMatches } from '@/shared/api/assessments';
 
 interface AppTransferProps {
   onNavigate: (page: Page) => void;
@@ -15,7 +16,25 @@ export function AppTransfer({ onNavigate, assessment, onSave }: AppTransferProps
   useEffect(() => {
     // Sequence: Preparing -> Sending -> Completed
     const t1 = setTimeout(() => setStatus('sending'), 1500);
-    const t2 = setTimeout(() => {
+    const t2 = setTimeout(async () => {
+      const assessmentId = assessment.id ? Number(assessment.id) : NaN;
+      const matches = assessment.jobMatches ?? [];
+      if (!Number.isNaN(assessmentId) && matches.length > 0) {
+        try {
+          await saveJobMatches(
+            assessmentId,
+            matches.map((m) => ({
+              jobName: m.jobName,
+              location: m.location,
+              time: m.time,
+              workDays: m.workDays ?? [],
+              description: m.description ?? '',
+            }))
+          );
+        } catch (_) {
+          // API 실패 시에도 로컬 저장은 진행
+        }
+      }
       setStatus('completed');
       onSave(); // Save to localStorage
     }, 4500);
@@ -24,7 +43,7 @@ export function AppTransfer({ onNavigate, assessment, onSave }: AppTransferProps
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [onSave]);
+  }, [onSave, assessment.id, assessment.jobMatches]);
 
   const handleComplete = () => {
     onNavigate('dashboard');
@@ -90,7 +109,14 @@ export function AppTransfer({ onNavigate, assessment, onSave }: AppTransferProps
         <p className="text-gray-500 text-lg mb-10 px-4">
           {status === 'preparing' && "분석 결과와 매칭 정보를 정리하고 있습니다."}
           {status === 'sending' && `${assessment.applicantName || '신청자'}님의 모바일 앱으로 알림을 보내고 있습니다.`}
-          {status === 'completed' && "모든 과정이 성공적으로 마무리되었습니다."}
+          {status === 'completed' && (
+            <>
+              모든 과정이 성공적으로 마무리되었습니다.
+              <span className="block mt-3 text-sm text-gray-600">
+                앱에서 <strong>최근 판단 기록</strong> 화면을 <strong>당겨서 새로고침</strong>하면 목록에 표시됩니다.
+              </span>
+            </>
+          )}
         </p>
 
         {status === 'completed' && (

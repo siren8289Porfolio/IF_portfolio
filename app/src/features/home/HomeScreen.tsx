@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, Pressable } from "react-native";
-import { FileText, Info, Shield, UserPlus, Briefcase } from "lucide-react-native";
+import { FileText, Info, Shield, Server } from "lucide-react-native";
 import { router } from "expo-router";
 
 import { colors } from "@/theme/colors";
@@ -8,24 +8,10 @@ import { Screen } from "@/ui/Screen";
 
 const menuItems = [
   {
-    icon: Briefcase,
-    title: "일자리 확인",
-    description: "추천 일자리 목록을 확인하고 선택합니다",
-    path: "/guide",
-    color: colors.primary,
-  },
-  {
-    icon: UserPlus,
-    title: "새 위험도 확인",
-    description: "신청자 정보를 입력하여 고용 위험도를 판단합니다",
-    path: "/applicant-form",
-    color: colors.secondary,
-  },
-  {
     icon: FileText,
-    title: "최근 판단 기록",
-    description: "이전에 확인한 위험도 판단 기록을 조회합니다",
-    path: "/records",
+    title: "최근 매칭 기록",
+    description: "웹에서 전송한 매칭된 일자리 목록을 조회합니다",
+    path: "/job-list",
     color: colors.info,
   },
   {
@@ -34,6 +20,13 @@ const menuItems = [
     description: "서비스 사용 방법 및 안내사항을 확인합니다",
     path: "/service-info",
     color: colors.mutedText,
+  },
+  {
+    icon: Server,
+    title: "서버 연결 설정",
+    description: "백엔드(Spring) 주소를 설정합니다. 실기기에서 목록이 안 뜨면 여기서 맥 IP 입력",
+    path: "/server-url",
+    color: "#0EA5E9",
   },
 ];
 

@@ -20,7 +20,7 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
     runtimeOnly 'org.postgresql:postgresql'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -28,4 +28,10 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+bootRun {
+    // 기본: PostgreSQL + if_user (application.yml). postgres 계정 쓰려면:
+    // ./gradlew bootRun --args='--spring.profiles.active=local'
+    args '--spring.profiles.active=default'
 }

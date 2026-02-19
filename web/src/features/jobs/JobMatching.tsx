@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Page, Assessment, JobMatch } from '@/shared/types/appTypes';
-import { Briefcase, MapPin, Clock, Calendar, AlignLeft, ChevronRight } from 'lucide-react';
+import { Briefcase, MapPin, Clock, Calendar, AlignLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { getRiskDetail } from '@/shared/api/assessments';
 
 interface JobMatchingProps {
   onNavigate: (page: Page) => void;
@@ -9,6 +10,67 @@ interface JobMatchingProps {
 }
 
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
+
+function RiskHeader({ assessment }: { assessment: Partial<Assessment> }) {
+  const [score, setScore] = useState<number | null>(null);
+  const [level, setLevel] = useState<'Low' | 'Medium' | 'High'>('Low');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const id = assessment.id ? Number(assessment.id) : NaN;
+    if (!assessment.id || Number.isNaN(id)) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const detail = await getRiskDetail(id);
+        if (cancelled) return;
+        setScore(detail.riskScore ?? 0);
+        const newLevel: 'Low' | 'Medium' | 'High' =
+          detail.riskGrade === 'HIGH' ? 'High' :
+          detail.riskGrade === 'LOW' ? 'Low' : 'Medium';
+        setLevel(newLevel);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [assessment.id]);
+
+  if (score === null && !loading) return null;
+
+  const color =
+    level === 'High'
+      ? 'text-red-600 bg-red-50 border-red-200'
+      : level === 'Medium'
+      ? 'text-amber-600 bg-amber-50 border-amber-200'
+      : 'text-green-600 bg-green-50 border-green-200';
+
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6 flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${color}`}>
+          <AlertTriangle className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-sm text-gray-500 font-medium">AI 위험도 요약</p>
+          {score !== null ? (
+            <p className="text-lg font-bold text-gray-800">
+              위험도 {score}% · {level === 'High' ? '고위험' : level === 'Medium' ? '중위험' : '저위험'}
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500">위험도 정보를 불러오는 중입니다…</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function JobMatching({ onNavigate, assessment, onUpdateAssessment }: JobMatchingProps) {
   // Always start with empty form for new match
@@ -65,6 +127,9 @@ export function JobMatching({ onNavigate, assessment, onUpdateAssessment }: JobM
 
   return (
     <div className="max-w-3xl mx-auto pb-24">
+      {/* 상단: AI 위험도 요약 (있으면) */}
+      <RiskHeader assessment={assessment} />
+
       <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 mb-6">
         <div className="flex items-center justify-between mb-6">
           <div>

@@ -1,20 +1,36 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Activity, ArrowLeft, Calendar, Check } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import Toast from "react-native-toast-message";
 
 import { colors } from "@/theme/colors";
-import { jobs } from "@/shared/data/jobs";
 import { getAuthenticated } from "@/shared/storage/authStorage";
 import { setSelectedJobId } from "@/shared/storage/selectionStorage";
 import { Card } from "@/ui/Card";
 import { PrimaryButton } from "@/ui/PrimaryButton";
 import { Screen } from "@/ui/Screen";
+import { fetchJobs } from "@/shared/api/jobs";
+import type { Job } from "@/shared/types/job";
+
+function mapApiToJob(r: { id: number; jobTitle: string; workplace: string; workHours: string; description: string }): Job {
+  return {
+    id: String(r.id),
+    title: r.jobTitle,
+    hours: r.workHours,
+    riskScore: 0,
+    riskLevel: "보통",
+    description: r.description || "",
+    conditions: [r.workHours, r.workplace].filter(Boolean),
+    reasons: { force: "", repetition: "", accident: "" },
+  };
+}
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [job, setJob] = useState<Job | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const guard = async () => {
@@ -27,7 +43,32 @@ export default function JobDetailScreen() {
     guard();
   }, []);
 
-  const job = useMemo(() => jobs.find((item) => item.id === id), [id]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await fetchJobs();
+        const mapped = list.map(mapApiToJob);
+        const found = mapped.find((item) => item.id === id);
+        if (!cancelled) setJob(found ?? null);
+      } catch {
+        if (!cancelled) setJob(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Screen>
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </Screen>
+    );
+  }
 
   if (!job) {
     return (
@@ -284,5 +325,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: colors.mutedText,
     textAlign: "center",
+  },
+  loadingBox: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

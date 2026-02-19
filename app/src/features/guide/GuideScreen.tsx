@@ -29,7 +29,7 @@ export default function GuideScreen() {
           <UserCheck color={colors.primary} size={44} />
         </View>
         <Text style={styles.title}>
-          <Text style={styles.titleHighlight}>김철수</Text>님,{"\n"}
+          <Text style={styles.titleHighlight}>회원</Text>님,{"\n"}
           선택 가능한 일자리가{"\n"}있습니다
         </Text>
         <Text style={styles.subtitle}>

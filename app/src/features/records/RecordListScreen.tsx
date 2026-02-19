@@ -1,5 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { ArrowLeft, ChevronRight, Search } from "lucide-react-native";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -8,22 +16,79 @@ import { router } from "expo-router";
 import { colors } from "@/theme/colors";
 import { Card } from "@/ui/Card";
 import { Screen } from "@/ui/Screen";
-import { getRecords } from "@/shared/storage/riskStorage";
+import { getRecords, setRecords } from "@/shared/storage/riskStorage";
 import type { RiskRecord } from "@/shared/types/risk";
 import { getRiskLevel } from "@/shared/utils/risk";
+import { fetchAssessmentRecords, type AssessmentRecordResponse } from "@/shared/api/assessments";
+import { getApiBaseUrl } from "@/shared/storage/apiConfigStorage";
+
+function mapApiToRiskRecord(r: AssessmentRecordResponse): RiskRecord {
+  return {
+    id: String(r.id),
+    age: r.age,
+    job: r.jobTitle,
+    physicalLevel: r.physicalLevel ?? "보통",
+    hasMedicalCondition: false,
+    workHours: "-",
+    workIntensity: "-",
+    riskScore: r.riskScore ?? 0,
+    timestamp: r.assessedAt,
+    jobMatches: (r.jobMatches ?? []).map((m) => ({
+      id: m.id,
+      jobName: m.jobName,
+      location: m.location,
+      time: m.time,
+      workDays: m.workDays ?? [],
+      description: m.description ?? "",
+      matchedAt: typeof m.matchedAt === "string" ? m.matchedAt : new Date(m.matchedAt).toISOString(),
+    })),
+  };
+}
 
 export default function RecordListScreen() {
-  const [records, setRecords] = useState<RiskRecord[]>([]);
+  const [records, setRecordsState] = useState<RiskRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastAttemptUrl, setLastAttemptUrl] = useState<string | null>(null);
+
+  const loadRecords = useCallback(async () => {
+    setLoadError(null);
+    setLastAttemptUrl(null);
+    try {
+      const apiRecords = await fetchAssessmentRecords();
+      const mapped: RiskRecord[] = apiRecords.map(mapApiToRiskRecord);
+      await setRecords(mapped);
+      setRecordsState(mapped);
+    } catch (e) {
+      const base = await getApiBaseUrl();
+      setLastAttemptUrl(base);
+      const stored = await getRecords();
+      setRecordsState(stored);
+      const msg = e instanceof Error ? e.message : String(e);
+      const isAbort = msg.includes("abort") || e instanceof Error && e.name === "AbortError";
+      setLoadError(
+        msg.startsWith("API ")
+          ? `서버 오류 (${msg})`
+          : isAbort
+            ? "서버에 연결할 수 없습니다. (시간 초과)"
+            : "서버에 연결할 수 없습니다."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadRecords = async () => {
-      const stored = await getRecords();
-      setRecords(stored);
-    };
-
     loadRecords();
-  }, []);
+  }, [loadRecords]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadRecords();
+  }, [loadRecords]);
 
   const filteredRecords = useMemo(() => {
     if (!searchTerm) return records;
@@ -33,14 +98,49 @@ export default function RecordListScreen() {
     );
   }, [records, searchTerm]);
 
+  if (loading) {
+    return (
+      <Screen>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.push("/home")} style={styles.backButton}>
+            <ArrowLeft color={colors.text} size={20} />
+          </Pressable>
+          <Text style={styles.headerTitle}>최근 판단 기록</Text>
+        </View>
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>목록을 불러오는 중...</Text>
+        </View>
+      </Screen>
+    );
+  }
+
   return (
-    <Screen scroll>
+    <Screen
+      scroll
+      scrollViewProps={{
+        refreshControl: (
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        ),
+      }}
+    >
       <View style={styles.header}>
         <Pressable onPress={() => router.push("/home")} style={styles.backButton}>
           <ArrowLeft color={colors.text} size={20} />
         </Pressable>
         <Text style={styles.headerTitle}>최근 판단 기록</Text>
       </View>
+
+      {loadError && records.length > 0 ? (
+        <Card style={styles.bannerCard}>
+          <Text style={styles.errorHint}>
+            서버와 동기화하지 못해 로컬 기록만 표시됩니다. 웹에서 추가한 목록을 보려면 서버 연결 설정을 확인하세요.
+          </Text>
+          <Pressable onPress={() => router.push("/server-url")}>
+            <Text style={styles.emptyLink}>서버 연결 설정</Text>
+          </Pressable>
+        </Card>
+      ) : null}
 
       <View style={styles.searchWrapper}>
         <Search color={colors.mutedText} size={18} />
@@ -53,11 +153,33 @@ export default function RecordListScreen() {
         />
       </View>
 
-      {filteredRecords.length === 0 ? (
+      {loadError && filteredRecords.length === 0 ? (
+        <Card style={styles.emptyCard}>
+          <Text style={styles.emptyText}>{loadError}</Text>
+          {lastAttemptUrl ? (
+            <Text style={styles.errorHint}>연결 시도 주소: {lastAttemptUrl}</Text>
+          ) : null}
+          <Text style={styles.errorHint}>
+            실기기에서는 "서버 연결 설정"에서 맥 IP(예: http://192.168.0.5:8080)를 입력하세요. 시뮬레이터는 Spring이 켜져 있어야 합니다.
+          </Text>
+          <Pressable onPress={() => router.push("/server-url")} style={styles.retryButton}>
+            <Text style={styles.emptyLink}>서버 연결 설정으로 이동</Text>
+          </Pressable>
+          <Pressable onPress={() => { setLoading(true); loadRecords(); }} style={styles.retryButton}>
+            <Text style={styles.emptyLink}>다시 불러오기</Text>
+          </Pressable>
+        </Card>
+      ) : filteredRecords.length === 0 ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyText}>저장된 기록이 없습니다</Text>
+          <Text style={styles.errorHint}>
+            웹에서 평가·매칭 후 "결과 전송"을 누르면 서버에 저장됩니다. 이 화면을 당겨서 새로고침하면 목록에 표시됩니다.
+          </Text>
+          <Pressable onPress={onRefresh} style={styles.retryButton}>
+            <Text style={styles.emptyLink}>지금 새로고침</Text>
+          </Pressable>
           <Pressable onPress={() => router.push("/applicant-form")}>
-            <Text style={styles.emptyLink}>새로운 판단 시작하기</Text>
+            <Text style={styles.emptyLink}>앱에서 새 판단 시작하기</Text>
           </Pressable>
         </Card>
       ) : (
@@ -157,10 +279,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
   },
+  loadingBox: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.mutedText,
+  },
   emptyCard: {
     alignItems: "center",
     gap: 8,
     paddingVertical: 32,
+  },
+  bannerCard: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  errorHint: {
+    fontSize: 12,
+    color: colors.mutedText,
+    textAlign: "center",
+  },
+  retryButton: {
+    marginTop: 8,
   },
   emptyText: {
     color: colors.mutedText,

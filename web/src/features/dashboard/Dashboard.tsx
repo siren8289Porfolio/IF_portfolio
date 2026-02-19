@@ -1,53 +1,93 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Page, Assessment } from '@/shared/types/appTypes';
-import { Plus, ChevronRight, User, AlertTriangle, FileText, CheckCircle, ChevronDown, ChevronUp, Briefcase, MapPin, Clock } from 'lucide-react';
+import { Plus, ChevronRight, User, AlertTriangle, FileText, CheckCircle, ChevronDown, ChevronUp, Briefcase, MapPin, Clock, Pencil, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { listApplicants } from '@/shared/api/applicants';
+import {
+  listAssessmentsByApplicant,
+  deleteAssessment,
+  updateAssessment,
+} from '@/shared/api/assessments';
+import type { ApplicantResponse, AssessmentResponse } from '@/shared/api/types';
 
 interface DashboardProps {
   onNavigate: (page: Page) => void;
   onSelectAssessment: (assessment: Assessment | null, navigate?: boolean) => void;
 }
 
+function mapApiToAssessment(a: ApplicantResponse, ass: AssessmentResponse): Assessment {
+  const statusMap: Record<string, Assessment['status']> = {
+    PENDING_AI: 'Draft',
+    AI_COMPLETED: 'Analyzed',
+    FINALIZED: 'Completed',
+  };
+  return {
+    id: String(ass.id),
+    date: ass.assessedAt,
+    applicantName: a.displayName,
+    age: a.age,
+    healthStatus: 'average',
+    workConditions: [],
+    notes: '',
+    riskScore: 0,
+    riskLevel: 'Medium',
+    riskFactors: [],
+    jobMatches: [],
+    status: statusMap[ass.status] ?? 'Draft',
+  };
+}
+
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'PENDING_AI', label: 'AI 대기' },
+  { value: 'AI_COMPLETED', label: '분석 완료' },
+  { value: 'FINALIZED', label: '확정' },
+];
+
 export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editStatus, setEditStatus] = useState<string>('');
 
-  useEffect(() => {
-    const saved = localStorage.getItem('if_assessments');
-    if (saved) {
-      setAssessments(JSON.parse(saved).reverse()); // Newest first
-    } else {
-      // Mock data for initial view
-      const mockData: Assessment[] = [
-        {
-          id: '1',
-          date: new Date().toISOString(),
-          applicantName: '김철수',
-          age: 72,
-          healthStatus: 'average',
-          workConditions: ['오전 근무', '실내'],
-          notes: '무릎 관절 주의',
-          riskScore: 45,
-          riskLevel: 'Medium',
-          riskFactors: ['고령', '관절 이슈'],
-          status: 'Completed',
-          jobMatches: [
-            {
-              id: 'm1',
-              jobName: '도서관 사서 보조',
-              location: '마포구립도서관',
-              time: '09:00 - 13:00',
-              workDays: ['월', '수', '금'],
-              description: '도서 정리 및 대출 반납 업무 보조',
-              matchedDate: new Date().toISOString()
-            }
-          ]
+  const loadFromApi = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const applicants = await listApplicants();
+      const all: Assessment[] = [];
+      for (const app of applicants) {
+        const list = await listAssessmentsByApplicant(app.id);
+        for (const ass of list) {
+          all.push(mapApiToAssessment(app, ass));
         }
-      ];
-      setAssessments(mockData);
-      localStorage.setItem('if_assessments', JSON.stringify(mockData));
+      }
+      all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      // 매칭 데이터는 아직 API가 없어서 localStorage에만 저장됨 → API 목록과 병합
+      const savedRaw = typeof window !== 'undefined' ? localStorage.getItem('if_assessments') : null;
+      const saved: Assessment[] = savedRaw ? (JSON.parse(savedRaw) as Assessment[]) : [];
+      const savedById = new Map(saved.map((a) => [a.id, a]));
+      const merged = all.map((a) => {
+        const local = savedById.get(a.id);
+        if (local?.jobMatches?.length) {
+          return { ...a, jobMatches: local.jobMatches, status: local.status ?? a.status };
+        }
+        return a;
+      });
+      setAssessments(merged);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+      setAssessments([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    loadFromApi();
+  }, [loadFromApi]);
 
   const handleNewAssessment = () => {
     onSelectAssessment(null); // Clear current selection and navigate
@@ -58,8 +98,42 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
       setExpandedId(null);
     } else {
       setExpandedId(item.id);
-      // Set the context but DO NOT navigate
       onSelectAssessment(item, false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, item: Assessment) => {
+    e.stopPropagation();
+    if (!window.confirm(`「${item.applicantName}」 평가 기록을 삭제하시겠습니까?`)) return;
+    try {
+      await deleteAssessment(Number(item.id));
+      setExpandedId((id) => (id === item.id ? null : id));
+      await loadFromApi();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '삭제 실패');
+    }
+  };
+
+  const openEdit = (e: React.MouseEvent, item: Assessment) => {
+    e.stopPropagation();
+    setEditId(item.id);
+    const s = item.status === 'Draft' ? 'PENDING_AI' : item.status === 'Analyzed' ? 'AI_COMPLETED' : 'FINALIZED';
+    setEditStatus(s);
+  };
+
+  const closeEdit = () => {
+    setEditId(null);
+    setEditStatus('');
+  };
+
+  const handleSaveStatus = async () => {
+    if (!editId) return;
+    try {
+      await updateAssessment(Number(editId), { status: editStatus });
+      closeEdit();
+      await loadFromApi();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '수정 실패');
     }
   };
 
@@ -97,6 +171,18 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+          {error}
+          <button type="button" onClick={loadFromApi} className="ml-2 underline">다시 시도</button>
+        </div>
+      )}
+      {loading && (
+        <div className="mb-8 text-center py-12 text-gray-500">불러오는 중...</div>
+      )}
+
+      {!loading && (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-8 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
           <div className="flex items-center gap-5">
@@ -143,7 +229,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
           <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">총 {assessments.length}건</span>
         </div>
 
-        {assessments.length === 0 ? (
+        {!loading && assessments.length === 0 ? (
           <div className="text-center py-24">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
               <FileText size={40} />
@@ -245,7 +331,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
                             <div className="p-8 border-b border-gray-100">
                               <div className="flex justify-between items-start mb-6">
                                 <h4 className="font-bold text-gray-800 text-lg">상세 정보 및 매칭 리스트</h4>
-                                <div className="flex gap-3">
+                                <div className="flex flex-wrap gap-3">
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -265,6 +351,20 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
                                   >
                                     <FileText size={16} />
                                     상세 리포트 보기
+                                  </button>
+                                  <button
+                                    onClick={(e) => openEdit(e, item)}
+                                    className="px-4 py-2 bg-white border border-amber-200 text-amber-700 rounded-lg font-bold text-sm hover:bg-amber-50 transition-colors flex items-center gap-2"
+                                  >
+                                    <Pencil size={16} />
+                                    상태 수정
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleDelete(e, item)}
+                                    className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg font-bold text-sm hover:bg-red-50 transition-colors flex items-center gap-2"
+                                  >
+                                    <Trash2 size={16} />
+                                    삭제
                                   </button>
                                 </div>
                               </div>
@@ -309,6 +409,42 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {/* 상태 수정 모달 */}
+      {editId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={closeEdit}>
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h4 className="font-bold text-lg text-gray-800 mb-4">상태 수정</h4>
+            <select
+              value={editStatus}
+              onChange={(e) => setEditStatus(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-gray-800 font-medium mb-6"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={closeEdit}
+                className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveStatus}
+                className="flex-1 py-3 bg-[#2F8F6B] text-white rounded-xl font-bold hover:bg-[#257A5A]"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
