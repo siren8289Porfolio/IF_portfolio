@@ -7,8 +7,6 @@ import { Dashboard } from '@/features/dashboard/Dashboard';
 import { AssessmentForm } from '@/features/assessment/AssessmentForm';
 import { RiskAnalysis } from '@/features/risk/RiskAnalysis';
 import { RiskResult } from '@/features/risk/RiskResult';
-import { AppTransfer } from '@/features/transfer/AppTransfer';
-import { JobMatching } from '@/features/jobs/JobMatching';
 import { Page, Assessment } from '@/shared/types/appTypes';
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('login');
@@ -34,40 +32,9 @@ export default function App() {
         id: Date.now().toString(),
         date: new Date().toISOString(),
         status: 'Draft',
-        jobMatches: []
       });
       handleNavigate('assessment-form');
     }
-  };
-
-  const handleSaveAssessment = (targetStatus?: string) => {
-    const saved = localStorage.getItem('if_assessments');
-    const assessments: Assessment[] = saved ? JSON.parse(saved) : [];
-    
-    // Check if updating existing or adding new
-    const existingIndex = assessments.findIndex(a => a.id === currentAssessment.id);
-    
-    // Determine status: Use provided targetStatus, or keep current status, or default to 'Analyzed' if Draft
-    let newStatus = targetStatus;
-    if (!newStatus) {
-       newStatus = currentAssessment.status === 'Draft' ? 'Analyzed' : (currentAssessment.status || 'Analyzed');
-    }
-
-    const finalAssessment = {
-      ...currentAssessment,
-      status: newStatus
-    } as Assessment;
-
-    if (existingIndex >= 0) {
-      assessments[existingIndex] = finalAssessment;
-    } else {
-      assessments.push(finalAssessment);
-    }
-    
-    localStorage.setItem('if_assessments', JSON.stringify(assessments));
-    
-    // Update local state as well to reflect saved status
-    setCurrentAssessment(finalAssessment);
   };
 
   return (
@@ -98,21 +65,6 @@ export default function App() {
         <RiskResult 
           onNavigate={handleNavigate} 
           assessment={currentAssessment}
-          onSave={handleSaveAssessment}
-        />
-      )}
-      {currentPage === 'job-matching' && (
-        <JobMatching 
-          onNavigate={handleNavigate} 
-          assessment={currentAssessment}
-          onUpdateAssessment={handleUpdateAssessment}
-        />
-      )}
-      {currentPage === 'app-transfer' && (
-        <AppTransfer 
-          onNavigate={handleNavigate} 
-          assessment={currentAssessment}
-          onSave={() => handleSaveAssessment('Completed')}
         />
       )}
     </Layout>

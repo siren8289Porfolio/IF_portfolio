@@ -10,7 +10,14 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "assessment")
+@Table(name = "assessment", indexes = {
+        // 대시보드 목록 정렬(ORDER BY assessed_at DESC)에 사용
+        @Index(name = "idx_assessment_assessed_at", columnList = "assessed_at"),
+        // 상태별 필터링(예: FINALIZED 건수 집계)에 사용
+        @Index(name = "idx_assessment_status", columnList = "status"),
+        // 신청자별 이력 조회(findByApplicant_IdOrderByAssessedAtDesc)에 사용
+        @Index(name = "idx_assessment_applicant_assessed_at", columnList = "applicant_id, assessed_at")
+})
 public class Assessment {
 
     @Id

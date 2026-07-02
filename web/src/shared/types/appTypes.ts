@@ -4,23 +4,10 @@ export interface Assessment {
   applicantName: string;
   age: number;
   healthStatus: string; // 'good', 'average', 'bad'
-  workConditions: string[];
-  notes: string;
   riskScore: number;
   riskLevel: 'Low' | 'Medium' | 'High';
   riskFactors: string[];
-  jobMatches: JobMatch[];
-  status: 'Draft' | 'Analyzed' | 'Matched' | 'Completed';
-}
-
-export interface JobMatch {
-  id: string;
-  jobName: string;
-  location: string;
-  time: string;
-  workDays: string[];
-  description: string;
-  matchedDate: string;
+  status: 'Draft' | 'Analyzed' | 'Completed';
 }
 
 export type Page =
@@ -29,7 +16,4 @@ export type Page =
   | 'dashboard'
   | 'assessment-form'
   | 'risk-analysis'
-  | 'risk-result'
-  | 'job-matching'
-  | 'app-transfer'
-  | 'complete';
+  | 'risk-result';

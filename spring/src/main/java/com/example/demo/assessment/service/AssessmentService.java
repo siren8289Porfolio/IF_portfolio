@@ -9,18 +9,17 @@ import com.example.demo.applicant.repository.HealthSnapshotRepository;
 import com.example.demo.assessment.dto.AssessmentCreateRequest;
 import com.example.demo.assessment.dto.AssessmentRecordResponse;
 import com.example.demo.assessment.dto.AssessmentResponse;
-import com.example.demo.assessment.dto.JobMatchDto;
-import com.example.demo.assessment.dto.JobMatchRequest;
+import com.example.demo.assessment.dto.AssessmentSummaryResponse;
 import com.example.demo.assessment.entity.Assessment;
 import com.example.demo.assessment.entity.AssessmentStatus;
-import com.example.demo.assessment.entity.JobMatch;
 import com.example.demo.assessment.dto.AssessmentUpdateRequest;
 import com.example.demo.assessment.repository.AssessmentRepository;
-import com.example.demo.assessment.repository.JobMatchRepository;
 import com.example.demo.ai.repository.AIRiskResultRepository;
 import com.example.demo.global.exception.NotFoundException;
 import com.example.demo.job.entity.Job;
 import com.example.demo.job.repository.JobRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +28,6 @@ import java.util.stream.Collectors;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 
 @Service
 public class AssessmentService {
@@ -39,7 +37,6 @@ public class AssessmentService {
     private final HealthSnapshotRepository healthSnapshotRepository;
     private final JobRepository jobRepository;
     private final AdminUserRepository adminUserRepository;
-    private final JobMatchRepository jobMatchRepository;
     private final AIRiskResultRepository riskResultRepository;
 
     public AssessmentService(
@@ -48,7 +45,6 @@ public class AssessmentService {
             HealthSnapshotRepository healthSnapshotRepository,
             JobRepository jobRepository,
             AdminUserRepository adminUserRepository,
-            JobMatchRepository jobMatchRepository,
             AIRiskResultRepository riskResultRepository
     ) {
         this.assessmentRepository = assessmentRepository;
@@ -56,7 +52,6 @@ public class AssessmentService {
         this.healthSnapshotRepository = healthSnapshotRepository;
         this.jobRepository = jobRepository;
         this.adminUserRepository = adminUserRepository;
-        this.jobMatchRepository = jobMatchRepository;
         this.riskResultRepository = riskResultRepository;
     }
 
@@ -87,77 +82,36 @@ public class AssessmentService {
         return resp;
     }
 
+    @Transactional(readOnly = true)
     public List<AssessmentResponse> listByApplicantId(Long applicantId) {
         return assessmentRepository.findByApplicant_IdOrderByAssessedAtDesc(applicantId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
-    /** 앱 기록 목록: 웹에서 추가한 assessment 전체 (이름, 연령, 직무, 신체수준, 위험도, 일시) */
+    /**
+     * 대시보드 목록 조회 (페이지네이션 + projection 쿼리로 N+1 및 과다 컬럼 조회 방지,
+     * {@link AssessmentRepository#findAllRecords(Pageable)} 참고).
+     * 정렬 기준(assessedAt desc 등)은 컨트롤러에서 Pageable에 담아 전달한다.
+     */
     @Transactional(readOnly = true)
-    public List<AssessmentRecordResponse> listAllRecords() {
-        return assessmentRepository.findAllByOrderByAssessedAtDesc().stream()
-                .map(this::toRecordResponse)
-                .collect(Collectors.toList());
+    public Page<AssessmentRecordResponse> listAllRecords(Pageable pageable) {
+        return assessmentRepository.findAllRecords(pageable);
     }
 
-    private AssessmentRecordResponse toRecordResponse(Assessment a) {
-        AssessmentRecordResponse r = new AssessmentRecordResponse();
-        r.setId(a.getId());
-        r.setApplicantName(a.getApplicant().getDisplayName());
-        r.setAge(a.getApplicant().getAge());
-        r.setJobTitle(a.getJob().getJobTitle());
-        r.setPhysicalLevel(a.getHealthSnapshot().getPhysicalLevel() != null
-                ? String.valueOf(a.getHealthSnapshot().getPhysicalLevel()) : null);
-        r.setAssessedAt(a.getAssessedAt());
-        if (a.getAiRiskResult() != null && a.getAiRiskResult().getTotalRiskPercent() != null) {
-            r.setRiskScore(a.getAiRiskResult().getTotalRiskPercent());
-        }
-        List<JobMatchDto> matchDtos = jobMatchRepository.findByAssessment_IdOrderByMatchedAtDesc(a.getId()).stream()
-                .map(this::toJobMatchDto)
-                .collect(Collectors.toList());
-        r.setJobMatches(matchDtos);
-        return r;
+    /**
+     * 대시보드 요약 카드용 집계. 목록 페이지를 프론트에서 length/filter로 세면 페이지 크기를
+     * 넘는 순간 값이 틀리므로, COUNT 쿼리 3번으로 서버에서 직접 계산한다.
+     */
+    @Transactional(readOnly = true)
+    public AssessmentSummaryResponse getSummary() {
+        long total = assessmentRepository.count();
+        long highRisk = assessmentRepository.countByAiRiskResult_RiskGrade("HIGH");
+        long finalized = assessmentRepository.countByStatus(AssessmentStatus.FINALIZED);
+        return new AssessmentSummaryResponse(total, highRisk, finalized);
     }
 
-    private JobMatchDto toJobMatchDto(JobMatch m) {
-        JobMatchDto dto = new JobMatchDto();
-        dto.setId(m.getId());
-        dto.setJobName(m.getJobName());
-        dto.setLocation(m.getLocation());
-        dto.setTime(m.getTime());
-        if (m.getWorkDays() != null && !m.getWorkDays().isEmpty()) {
-            dto.setWorkDays(java.util.Arrays.asList(m.getWorkDays().split(",")));
-        } else {
-            dto.setWorkDays(new ArrayList<>());
-        }
-        dto.setDescription(m.getDescription());
-        dto.setMatchedAt(m.getMatchedAt());
-        return dto;
-    }
-
-    /** 웹에서 매칭 완료 시 호출. 해당 assessment의 기존 매칭을 지우고 새 목록으로 저장. */
-    @Transactional
-    public void saveJobMatches(Long assessmentId, List<JobMatchRequest> requests) {
-        Assessment assessment = assessmentRepository.findById(assessmentId)
-                .orElseThrow(() -> new NotFoundException("Assessment not found: " + assessmentId));
-        jobMatchRepository.deleteByAssessment_Id(assessmentId);
-        if (requests == null || requests.isEmpty()) return;
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        for (JobMatchRequest req : requests) {
-            JobMatch m = new JobMatch();
-            m.setAssessment(assessment);
-            m.setJobName(req.getJobName() != null ? req.getJobName() : "");
-            m.setLocation(req.getLocation());
-            m.setTime(req.getTime());
-            m.setWorkDays(req.getWorkDays() != null ? String.join(",", req.getWorkDays()) : "");
-            m.setDescription(req.getDescription());
-            m.setMatchedAt(now);
-            jobMatchRepository.save(m);
-        }
-    }
-
-    /** 기록 삭제: AI 결과·매칭 제거 후 assessment 삭제 */
+    /** 기록 삭제: AI 결과 제거 후 assessment 삭제 */
     @Transactional
     public void deleteAssessment(Long assessmentId) {
         Assessment a = assessmentRepository.findById(assessmentId)
@@ -168,7 +122,6 @@ public class AssessmentService {
             assessmentRepository.save(a);
             riskResultRepository.delete(riskResult);
         }
-        jobMatchRepository.deleteByAssessment_Id(assessmentId);
         assessmentRepository.delete(a);
     }
 

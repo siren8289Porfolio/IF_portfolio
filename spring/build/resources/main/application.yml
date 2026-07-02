@@ -1,4 +1,5 @@
-# PostgreSQL (웹·앱 공통 백엔드). DB/계정: createdb -O if_user if_spring && createuser -P if_user
+# PostgreSQL (웹·앱 공통 백엔드).
+# DB 최초 생성: ./scripts/init-db.sh  (또는 docker compose up --build)
 # FastAPI(위험도/설명) 주소. ai 서버: cd ai && uvicorn src.app.main:app --port 8000
 app:
   ai:
@@ -17,6 +18,29 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
+    # Hibernate ddl-auto가 테이블/일반 인덱스는 만들어 주지만 partial index(WHERE절)는
+    # 어노테이션으로 표현할 수 없어 schema.sql로 보충한다. defer-datasource-initialization로
+    # Hibernate DDL 이후에 실행되도록 순서를 맞춘다.
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
 logging:
   level:

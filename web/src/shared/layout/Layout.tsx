@@ -23,12 +23,6 @@ export function Layout({ children, currentPage, onNavigate, title }: LayoutProps
     } else if (currentPage === 'risk-result') {
       // User expects to go back to Dashboard (List) from Result view
       onNavigate('dashboard');
-    } else if (currentPage === 'job-matching') {
-      onNavigate('risk-result');
-    } else if (currentPage === 'app-transfer') {
-      onNavigate('job-matching');
-    } else if (currentPage === 'complete') {
-      onNavigate('dashboard');
     } else {
       onNavigate('dashboard');
     }

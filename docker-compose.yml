@@ -1,0 +1,60 @@
+version: "3.9"
+
+# 로컬에서 postgres + ai(FastAPI) + spring(Spring Boot)을 한 번에 띄우기 위한 구성.
+# 사용법: docker compose up --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: if_spring
+      POSTGRES_USER: if_user
+      POSTGRES_PASSWORD: change-me
+    ports:
+      - "5432:5432"
+    volumes:
+      - if_pgdata:/var/lib/postgresql/data
+      - ./spring/db:/docker-entrypoint-initdb.d/db:ro
+      - ./spring/db/docker-init.sh:/docker-entrypoint-initdb.d/99-docker-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U if_user -d if_spring"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ai:
+    build: ./ai
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./ai/.env.example
+    environment:
+      # 실제 키는 ai/.env(gitignore 대상)에 두고, 아래 값으로 덮어쓰는 방식 권장
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  spring:
+    build: ./spring
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/if_spring
+      SPRING_DATASOURCE_USERNAME: if_user
+      SPRING_DATASOURCE_PASSWORD: change-me
+      APP_AI_BASE_URL: http://ai:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  if_pgdata:

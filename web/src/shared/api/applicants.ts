@@ -6,14 +6,6 @@ import {
 } from "./types";
 import { apiRequest } from "./client";
 
-export async function listApplicants(): Promise<ApplicantResponse[]> {
-  return apiRequest<ApplicantResponse[]>("/api/applicants");
-}
-
-export async function getApplicant(id: number): Promise<ApplicantResponse> {
-  return apiRequest<ApplicantResponse>(`/api/applicants/${id}`);
-}
-
 export async function createApplicant(
   body: ApplicantCreateRequest
 ): Promise<ApplicantResponse> {

@@ -26,7 +26,7 @@ INTERIM_DIR = DATA_DIR / "interim"
 
 
 RAW_FILES = {
-  "moel_accident_2023": "고용노동부 산업재해현황_20231231.csv",
+  "moel_accident_2023": "고용노동부 산업재해현황_20231231 (2).csv",
   "nhis_ltc_grade_2025": "국민건강보험공단_노인장기요양보험 등급판정 현황_20251231.CSV",
 }
 

@@ -1,0 +1,3 @@
+-- 스키마는 spring/db/ 가 단일 소스입니다.
+-- 적용: cd spring && ./db/apply-schema.sh
+-- 이 파일은 Spring Boot sql.init 호환용 placeholder (비어 있음).

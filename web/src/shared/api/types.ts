@@ -57,3 +57,32 @@ export interface AssessmentRiskDetailResponse {
   guidance: string;
   disclaimer: string;
 }
+
+/** GET /api/assessments 목록 항목 (대시보드). fetch join으로 한 번에 조회됨. */
+export interface AssessmentRecordResponse {
+  id: number;
+  applicantName: string;
+  age: number;
+  jobTitle: string;
+  physicalLevel: string | null;
+  status: string;
+  riskScore: number | null;
+  riskGrade: 'LOW' | 'MID' | 'HIGH' | null;
+  assessedAt: string;
+}
+
+/** GET /api/assessments/summary. 목록과 별도로 COUNT 쿼리 3번으로 서버에서 집계한 값. */
+export interface AssessmentSummaryResponse {
+  totalCount: number;
+  highRiskCount: number;
+  finalizedCount: number;
+}
+
+/** Spring Data Page<T> 직렬화 형태 (일부 필드만 사용) */
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}

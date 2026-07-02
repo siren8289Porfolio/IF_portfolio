@@ -1,16 +1,32 @@
 import {
   AssessmentCreateRequest,
+  AssessmentRecordResponse,
   AssessmentResponse,
   AssessmentRiskDetailResponse,
+  AssessmentSummaryResponse,
+  PageResponse,
 } from "./types";
 import { apiRequest } from "./client";
 
-export async function listAssessmentsByApplicant(
-  applicantId: number
-): Promise<AssessmentResponse[]> {
-  return apiRequest<AssessmentResponse[]>(
-    `/api/applicants/${applicantId}/assessments`
+/**
+ * 대시보드 전체 목록 (신청자별로 N번 조회하는 대신 1번의 join 쿼리로 조회).
+ */
+export async function listAssessmentRecords(
+  page = 0,
+  size = 50
+): Promise<PageResponse<AssessmentRecordResponse>> {
+  return apiRequest<PageResponse<AssessmentRecordResponse>>(
+    `/api/assessments?page=${page}&size=${size}&sort=assessedAt,desc`
   );
+}
+
+/**
+ * 대시보드 요약 카드(총 건수/고위험군/완료 건수)용 집계.
+ * 목록 페이지의 length/filter로 계산하면 전체 건수가 페이지 크기를 넘는 순간 값이
+ * 틀어지므로, 서버에서 COUNT 쿼리로 집계한 값을 별도로 받는다.
+ */
+export async function getAssessmentSummary(): Promise<AssessmentSummaryResponse> {
+  return apiRequest<AssessmentSummaryResponse>(`/api/assessments/summary`);
 }
 
 export async function createAssessment(
@@ -24,17 +40,6 @@ export async function createAssessment(
       body: JSON.stringify(body),
     }
   );
-}
-
-/** 웹에서 매칭 완료 시 서버에 저장 → 앱에서 조회 가능 */
-export async function saveJobMatches(
-  assessmentId: number,
-  body: { jobName: string; location: string; time: string; workDays: string[]; description?: string }[]
-): Promise<void> {
-  await apiRequest<void>(`/api/assessments/${assessmentId}/job-matches`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
 }
 
 /** 기록 삭제 */

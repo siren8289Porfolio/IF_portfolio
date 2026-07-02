@@ -19,8 +19,6 @@ export function AssessmentForm({ onNavigate, onUpdateAssessment, initialData }: 
     applicantName: initialData?.applicantName || '',
     age: initialData?.age?.toString() || '',
     healthStatus: initialData?.healthStatus || 'average',
-    workConditions: initialData?.workConditions || [] as string[],
-    notes: initialData?.notes || ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,17 +30,6 @@ export function AssessmentForm({ onNavigate, onUpdateAssessment, initialData }: 
   useEffect(() => {
     listJobs().then(setJobs).catch(() => setJobs([]));
   }, []);
-
-  const workOptions = ['실내 근무', '야외 근무', '오전', '오후', '단순 노무', '전문직', '앉아서 근무', '서서 근무'];
-
-  const toggleCondition = (condition: string) => {
-    setFormData(prev => ({
-      ...prev,
-      workConditions: prev.workConditions.includes(condition)
-        ? prev.workConditions.filter(c => c !== condition)
-        : [...prev.workConditions, condition]
-    }));
-  };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -78,8 +65,6 @@ export function AssessmentForm({ onNavigate, onUpdateAssessment, initialData }: 
         applicantName: formData.applicantName,
         age: Number(formData.age),
         healthStatus: formData.healthStatus,
-        workConditions: formData.workConditions,
-        notes: formData.notes,
       });
       onNavigate('risk-analysis');
     } catch (e) {
@@ -151,26 +136,6 @@ export function AssessmentForm({ onNavigate, onUpdateAssessment, initialData }: 
             </div>
           </div>
 
-          {/* Work Conditions */}
-          <div>
-            <label className="block text-sm font-bold text-gray-800 mb-3">근무 가능 조건 (다중 선택)</label>
-            <div className="flex flex-wrap gap-3">
-              {workOptions.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => toggleCondition(option)}
-                  className={`px-6 py-3 rounded-full text-sm font-medium border transition-all ${
-                    formData.workConditions.includes(option)
-                      ? 'bg-[#2F8F6B] border-[#2F8F6B] text-white shadow-md shadow-[#2F8F6B]/20'
-                      : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Job selection */}
           <div>
             <label className="block text-sm font-bold text-gray-800 mb-3">검토 대상 직무</label>
@@ -188,17 +153,6 @@ export function AssessmentForm({ onNavigate, onUpdateAssessment, initialData }: 
             {jobs.length === 0 && !errors.job && (
               <p className="text-gray-500 text-sm mt-1">백엔드에 직무가 없으면 먼저 DB에 등록해주세요.</p>
             )}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-bold text-gray-800 mb-3">참고 사항</label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-5 py-4 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2F8F6B] focus:border-transparent transition-all h-40 resize-none text-gray-800 placeholder-gray-400"
-              placeholder="특이사항을 입력하세요..."
-            />
           </div>
 
           {submitError && (

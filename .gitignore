@@ -7,3 +7,8 @@ build/
 # API 키 등 비밀값 (복사 후 .env에 실제 값 입력)
 .env
 *.env.local
+
+# ai: ETL로 생성되는 중간/마트 데이터 (raw만 버전 관리, 나머지는 빌드 시 재생성)
+ai/data/interim/
+ai/data/marts/
+ai/.venv/

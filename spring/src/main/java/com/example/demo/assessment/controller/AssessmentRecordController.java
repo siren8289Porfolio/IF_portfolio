@@ -3,18 +3,19 @@ package com.example.demo.assessment.controller;
 import com.example.demo.ai.service.AIRiskService;
 import com.example.demo.assessment.dto.AssessmentRecordResponse;
 import com.example.demo.assessment.dto.AssessmentRiskDetailResponse;
+import com.example.demo.assessment.dto.AssessmentSummaryResponse;
 import com.example.demo.assessment.dto.AssessmentUpdateRequest;
-import com.example.demo.assessment.dto.JobMatchRequest;
 import com.example.demo.assessment.service.AssessmentService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 /**
- * 앱용: 웹에서 추가한 assessment 전체 목록.
- * GET /api/assessments → 앱 "기록" 화면에 표시.
- * POST /api/assessments/{id}/job-matches → 웹에서 매칭 저장 후 앱에 전달.
+ * 평가 기록 전체 목록 및 위험도 산출/조회, 상태 변경, 삭제.
+ * GET /api/assessments → 대시보드 전체 기록 조회 (페이지네이션, 기본 assessedAt desc 정렬).
  * POST /api/assessments/{id}/compute-risk → FastAPI /score + /explain 호출 후 AI 결과 저장.
  */
 @RestController
@@ -30,14 +31,16 @@ public class AssessmentRecordController {
     }
 
     @GetMapping
-    public List<AssessmentRecordResponse> listAll() {
-        return assessmentService.listAllRecords();
+    public Page<AssessmentRecordResponse> listAll(
+            @PageableDefault(size = 50, sort = "assessedAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return assessmentService.listAllRecords(pageable);
     }
 
-    @PostMapping("/{assessmentId}/job-matches")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void saveJobMatches(@PathVariable Long assessmentId, @RequestBody List<JobMatchRequest> body) {
-        assessmentService.saveJobMatches(assessmentId, body != null ? body : List.of());
+    /** 대시보드 요약 카드(총 건수/고위험군/완료 건수). 목록과 별도로 COUNT 쿼리로 집계한다. */
+    @GetMapping("/summary")
+    public AssessmentSummaryResponse getSummary() {
+        return assessmentService.getSummary();
     }
 
     @PostMapping("/{assessmentId}/compute-risk")

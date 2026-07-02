@@ -1,16 +1,22 @@
+# IF web (Next.js)
 
-  # IF_web-2 (Next.js)
+고령자 노동·돌봄 규제 판단 웹앱의 프론트엔드. MVP 3대 기능만 다룬다.
 
-  This is a code bundle for IF_web. The original project is available at https://www.figma.com/design/mC8ATofkHAO04Xk0ap8GO2/IF_web.
+1. 신청자 정보 + 건강 스냅샷 입력 (`features/assessment`)
+2. AI 위험도 분석 (`features/risk`) — Spring 경유로 FastAPI `/score`, `/explain` 호출
+3. 대시보드 기록 관리: 목록/상태수정/삭제 (`features/dashboard`)
 
-  ## Running the code (Next.js)
+## 실행
 
-  Run `npm i` to install the dependencies.
+```bash
+npm install
+npm run dev
+```
 
-  Run `npm run dev` to start the development server.
+`.env.local.example`을 참고해 `.env.local`을 만들고 Spring 백엔드 주소를 설정한다.
 
-  ### Common commands
+## 주요 스크립트
 
-  - `npm run build`
-  - `npm run start`
-  
+- `npm run dev` — 개발 서버
+- `npm run build` — 프로덕션 빌드 (타입 체크 포함)
+- `npm run start` — 빌드된 앱 실행

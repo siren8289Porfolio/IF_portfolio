@@ -1,21 +1,38 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Page, Assessment } from '@/shared/types/appTypes';
-import { Plus, ChevronRight, User, AlertTriangle, FileText, CheckCircle, ChevronDown, ChevronUp, Briefcase, MapPin, Clock, Pencil, Trash2 } from 'lucide-react';
+import { Plus, User, AlertTriangle, FileText, CheckCircle, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { listApplicants } from '@/shared/api/applicants';
 import {
-  listAssessmentsByApplicant,
+  listAssessmentRecords,
+  getAssessmentSummary,
   deleteAssessment,
   updateAssessment,
 } from '@/shared/api/assessments';
-import type { ApplicantResponse, AssessmentResponse } from '@/shared/api/types';
+import type { AssessmentRecordResponse, AssessmentSummaryResponse } from '@/shared/api/types';
+
+const PAGE_SIZE = 20;
 
 interface DashboardProps {
   onNavigate: (page: Page) => void;
   onSelectAssessment: (assessment: Assessment | null, navigate?: boolean) => void;
 }
 
-function mapApiToAssessment(a: ApplicantResponse, ass: AssessmentResponse): Assessment {
+const RISK_GRADE_MAP: Record<string, Assessment['riskLevel']> = {
+  LOW: 'Low',
+  MID: 'Medium',
+  HIGH: 'High',
+};
+
+/** AssessmentForm에서 저장한 physicalLevel(1~5 문자열)을 화면 표시용 한글 라벨로 변환 */
+function physicalLevelToLabel(physicalLevel: string | null): string {
+  if (!physicalLevel) return '정보 없음';
+  const level = Number(physicalLevel);
+  if (level <= 2) return '좋음';
+  if (level >= 4) return '나쁨';
+  return '보통';
+}
+
+function mapApiToAssessment(ass: AssessmentRecordResponse): Assessment {
   const statusMap: Record<string, Assessment['status']> = {
     PENDING_AI: 'Draft',
     AI_COMPLETED: 'Analyzed',
@@ -24,15 +41,12 @@ function mapApiToAssessment(a: ApplicantResponse, ass: AssessmentResponse): Asse
   return {
     id: String(ass.id),
     date: ass.assessedAt,
-    applicantName: a.displayName,
-    age: a.age,
-    healthStatus: 'average',
-    workConditions: [],
-    notes: '',
-    riskScore: 0,
-    riskLevel: 'Medium',
+    applicantName: ass.applicantName,
+    age: ass.age,
+    healthStatus: physicalLevelToLabel(ass.physicalLevel),
+    riskScore: ass.riskScore ?? 0,
+    riskLevel: (ass.riskGrade && RISK_GRADE_MAP[ass.riskGrade]) || 'Medium',
     riskFactors: [],
-    jobMatches: [],
     status: statusMap[ass.status] ?? 'Draft',
   };
 }
@@ -45,38 +59,30 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 
 export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [summary, setSummary] = useState<AssessmentSummaryResponse | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [editStatus, setEditStatus] = useState<string>('');
 
-  const loadFromApi = useCallback(async () => {
+  const loadFromApi = useCallback(async (page = 0) => {
     setLoading(true);
     setError(null);
     try {
-      const applicants = await listApplicants();
-      const all: Assessment[] = [];
-      for (const app of applicants) {
-        const list = await listAssessmentsByApplicant(app.id);
-        for (const ass of list) {
-          all.push(mapApiToAssessment(app, ass));
-        }
-      }
-      all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      // 매칭 데이터는 아직 API가 없어서 localStorage에만 저장됨 → API 목록과 병합
-      const savedRaw = typeof window !== 'undefined' ? localStorage.getItem('if_assessments') : null;
-      const saved: Assessment[] = savedRaw ? (JSON.parse(savedRaw) as Assessment[]) : [];
-      const savedById = new Map(saved.map((a) => [a.id, a]));
-      const merged = all.map((a) => {
-        const local = savedById.get(a.id);
-        if (local?.jobMatches?.length) {
-          return { ...a, jobMatches: local.jobMatches, status: local.status ?? a.status };
-        }
-        return a;
-      });
-      setAssessments(merged);
+      // 신청자마다 따로 조회하던 N+1 호출 대신, 서버에서 join + 페이지네이션된 목록을
+      // 한 번에 받아온다 (GET /api/assessments). 요약 카드는 목록 페이지 길이가 아니라
+      // 별도 COUNT 집계(GET /api/assessments/summary)로 정확한 전체 건수를 구한다.
+      const [listRes, summaryRes] = await Promise.all([
+        listAssessmentRecords(page, PAGE_SIZE),
+        getAssessmentSummary(),
+      ]);
+      setAssessments(listRes.content.map(mapApiToAssessment));
+      setTotalPages(listRes.totalPages);
+      setPageIndex(listRes.number);
+      setSummary(summaryRes);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
       setAssessments([]);
@@ -86,7 +92,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
   }, []);
 
   useEffect(() => {
-    loadFromApi();
+    loadFromApi(0);
   }, [loadFromApi]);
 
   const handleNewAssessment = () => {
@@ -108,7 +114,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
     try {
       await deleteAssessment(Number(item.id));
       setExpandedId((id) => (id === item.id ? null : id));
-      await loadFromApi();
+      await loadFromApi(pageIndex);
     } catch (err) {
       setError(err instanceof Error ? err.message : '삭제 실패');
     }
@@ -131,7 +137,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
     try {
       await updateAssessment(Number(editId), { status: editStatus });
       closeEdit();
-      await loadFromApi();
+      await loadFromApi(pageIndex);
     } catch (err) {
       setError(err instanceof Error ? err.message : '수정 실패');
     }
@@ -140,7 +146,6 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Completed': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'Matched': return 'bg-green-100 text-green-700 border-green-200';
       case 'Analyzed': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -174,7 +179,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
           {error}
-          <button type="button" onClick={loadFromApi} className="ml-2 underline">다시 시도</button>
+          <button type="button" onClick={() => loadFromApi(pageIndex)} className="ml-2 underline">다시 시도</button>
         </div>
       )}
       {loading && (
@@ -191,7 +196,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">총 평가 건수</p>
-              <p className="text-3xl font-bold text-gray-800">{assessments.length}건</p>
+              <p className="text-3xl font-bold text-gray-800">{summary?.totalCount ?? 0}건</p>
             </div>
           </div>
         </div>
@@ -203,7 +208,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">고위험군 발견</p>
               <p className="text-3xl font-bold text-gray-800">
-                {assessments.filter(a => a.riskLevel === 'High').length}건
+                {summary?.highRiskCount ?? 0}건
               </p>
             </div>
           </div>
@@ -216,7 +221,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">평가 완료</p>
               <p className="text-3xl font-bold text-gray-800">
-                {assessments.filter(a => a.status === 'Completed' || a.status === 'Matched').length}건
+                {summary?.finalizedCount ?? 0}건
               </p>
             </div>
           </div>
@@ -226,7 +231,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
       <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden">
         <div className="p-8 border-b border-gray-100 flex justify-between items-center">
           <h3 className="font-bold text-xl text-gray-800">최근 평가 기록</h3>
-          <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">총 {assessments.length}건</span>
+          <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">총 {summary?.totalCount ?? 0}건</span>
         </div>
 
         {!loading && assessments.length === 0 ? (
@@ -268,7 +273,7 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
                   >
                     <td className="px-8 py-5 whitespace-nowrap">
                       <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getStatusColor(item.status)}`}>
-                        {item.status === 'Matched' ? 'Completed' : item.status}
+                        {item.status}
                       </span>
                     </td>
                     <td className="px-8 py-5 whitespace-nowrap">
@@ -278,11 +283,6 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
                         </div>
                         <div>
                           <span className="font-bold text-gray-800 text-lg block">{item.applicantName}</span>
-                          {item.jobMatches && item.jobMatches.length > 0 && (
-                            <span className="text-xs text-[#2F8F6B] font-medium">
-                              {item.jobMatches.length}건 매칭됨
-                            </span>
-                          )}
                         </div>
                       </div>
                     </td>
@@ -330,18 +330,8 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
                           >
                             <div className="p-8 border-b border-gray-100">
                               <div className="flex justify-between items-start mb-6">
-                                <h4 className="font-bold text-gray-800 text-lg">상세 정보 및 매칭 리스트</h4>
+                                <h4 className="font-bold text-gray-800 text-lg">상세 정보</h4>
                                 <div className="flex flex-wrap gap-3">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onNavigate('job-matching');
-                                    }}
-                                    className="px-4 py-2 bg-[#2F8F6B] text-white rounded-lg font-bold text-sm hover:bg-[#257A5A] transition-colors flex items-center gap-2"
-                                  >
-                                    <Plus size={16} />
-                                    일자리 추가 매칭
-                                  </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -368,35 +358,6 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
                                   </button>
                                 </div>
                               </div>
-
-                              {item.jobMatches && item.jobMatches.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  {item.jobMatches.map((match, idx) => (
-                                    <div key={idx} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                                      <div className="flex items-center gap-3 mb-3">
-                                        <div className="bg-[#E5F2ED] p-2 rounded-lg">
-                                          <Briefcase size={16} className="text-[#2F8F6B]" />
-                                        </div>
-                                        <span className="font-bold text-gray-800 truncate">{match.jobName}</span>
-                                      </div>
-                                      <div className="space-y-2 text-sm text-gray-600">
-                                        <div className="flex items-center gap-2">
-                                          <MapPin size={14} className="text-gray-400" />
-                                          {match.location}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <Clock size={14} className="text-gray-400" />
-                                          {match.time}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="bg-white p-6 rounded-xl border border-dashed border-gray-300 text-center text-gray-500">
-                                  아직 매칭된 일자리가 없습니다. '일자리 추가 매칭' 버튼을 눌러 진행해주세요.
-                                </div>
-                              )}
                             </div>
                           </motion.div>
                         </td>
@@ -406,6 +367,30 @@ export function Dashboard({ onNavigate, onSelectAssessment }: DashboardProps) {
                 ])}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-8 py-5 border-t border-gray-100">
+            <span className="text-sm text-gray-500">{pageIndex + 1} / {totalPages} 페이지</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={pageIndex === 0}
+                onClick={() => loadFromApi(pageIndex - 1)}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                이전
+              </button>
+              <button
+                type="button"
+                disabled={pageIndex + 1 >= totalPages}
+                onClick={() => loadFromApi(pageIndex + 1)}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                다음
+              </button>
+            </div>
           </div>
         )}
       </div>
