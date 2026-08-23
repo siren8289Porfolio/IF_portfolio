@@ -1,0 +1,76 @@
+IF_portfolio/
+├── .github/
+│   └── workflows/
+│       └── githubactions.yml
+├── .idea/
+│   ├── IF.iml
+│   ├── misc.xml
+│   ├── modules.xml
+│   ├── vcs.xml
+│   └── workspace.xml
+├── .vscode/
+│   └── settings.json
+├── ai/
+│   ├── data/
+│   │   └── raw/                    # 원본 데이터 파일들
+│   ├── ml/
+│   │   └── README.md
+│   ├── src/
+│   │   ├── app/                   # FastAPI 메인 + 서비스
+│   │   └── etl/                   # 데이터 전처리 스크립트
+│   ├── tests/
+│   │   ├── test_ai_invariants.py
+│   │   ├── test_external_public_ingestion.py
+│   │   └── test_ml_baseline.py
+│   ├── .dockerignore
+│   ├── .env.example
+│   ├── Dockerfile
+│   ├── README.md
+│   ├── requirements.txt
+│   └── run.sh
+├── spring/
+│   ├── db/
+│   │   ├── analytics/             # 스타 스키마, KPI 뷰
+│   │   ├── external/              # 외부 데이터 참조 스키마
+│   │   ├── operational/           # 운영 테이블/시드
+│   │   ├── pipeline/              # 갱신 스크립트
+│   │   ├── quality/               # 데이터 품질 체크
+│   │   ├── apply-schema.sh
+│   │   ├── docker-init.sh
+│   │   ├── init-db.sh
+│   │   ├── README.md
+│   │   └── verify-db-efficiency.sql
+│   ├── src/
+│   │   ├── main/                  # Java 소스 (패키지 구조 유지)
+│   │   └── test/                  # 테스트 코드
+│   ├── .dockerignore
+│   ├── BACKEND_STRUCTURE.md
+│   ├── build.gradle
+│   ├── Dockerfile
+│   ├── gradlew
+│   ├── gradlew.bat
+│   └── settings.gradle
+├── web/
+│   ├── src/
+│   │   ├── app/                   # Next.js App Router
+│   │   ├── features/              # assessment / auth / dashboard / risk
+│   │   ├── shared/                # api / layout / types
+│   │   └── styles/                # 전역 CSS
+│   ├── .env.local.example
+│   ├── next-env.d.ts
+│   ├── next.config.mjs
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.mjs
+│   ├── README.md
+│   └── tsconfig.json
+├── .gitignore
+├── AI.md
+├── BE.md
+├── DA.md
+├── DATA.md
+├── docker-compose.yml
+├── ML.md
+├── QA.md
+├── README.md
+└── STRUCTURE_FULL.txt
