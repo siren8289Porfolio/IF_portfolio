@@ -15,6 +15,8 @@ import com.example.demo.assessment.entity.AssessmentStatus;
 import com.example.demo.assessment.dto.AssessmentUpdateRequest;
 import com.example.demo.assessment.repository.AssessmentRepository;
 import com.example.demo.ai.repository.AIRiskResultRepository;
+import com.example.demo.global.exception.InvalidRequestException;
+import com.example.demo.global.exception.InvalidStatusTransitionException;
 import com.example.demo.global.exception.NotFoundException;
 import com.example.demo.job.entity.Job;
 import com.example.demo.job.repository.JobRepository;
@@ -125,15 +127,29 @@ public class AssessmentService {
         assessmentRepository.delete(a);
     }
 
-    /** 기록 상태만 수정 (상태값: PENDING_AI, AI_COMPLETED, FINALIZED) */
+    /**
+     * 기록 상태만 수정. 허용 전이만 적용:
+     * PENDING_AI → AI_COMPLETED, AI_COMPLETED → FINALIZED.
+     */
     @Transactional
     public void updateAssessment(Long assessmentId, AssessmentUpdateRequest request) {
         Assessment a = assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new NotFoundException("Assessment not found: " + assessmentId));
-        if (request.getStatus() != null && !request.getStatus().isBlank()) {
-            a.setStatus(AssessmentStatus.valueOf(request.getStatus().trim()));
-            assessmentRepository.save(a);
+        if (request.getStatus() == null || request.getStatus().isBlank()) {
+            return;
         }
+        AssessmentStatus target;
+        try {
+            target = AssessmentStatus.valueOf(request.getStatus().trim());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRequestException("Unknown assessment status: " + request.getStatus());
+        }
+        AssessmentStatus from = a.getStatus();
+        if (!from.canTransitionTo(target)) {
+            throw new InvalidStatusTransitionException(from, target);
+        }
+        a.setStatus(target);
+        assessmentRepository.save(a);
     }
 
     private AssessmentResponse toResponse(Assessment a) {

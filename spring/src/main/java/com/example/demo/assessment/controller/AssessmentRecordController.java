@@ -32,7 +32,8 @@ public class AssessmentRecordController {
 
     @GetMapping
     public Page<AssessmentRecordResponse> listAll(
-            @PageableDefault(size = 50, sort = "assessedAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(size = 50, sort = {"assessedAt", "id"}, direction = Sort.Direction.DESC)
+            Pageable pageable
     ) {
         return assessmentService.listAllRecords(pageable);
     }

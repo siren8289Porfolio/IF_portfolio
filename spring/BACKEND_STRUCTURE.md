@@ -1,9 +1,32 @@
 ## IF Spring Backend 구조·유지보수 기준
 
 이 문서는 고령자 노동·돌봄 규제 판단 웹앱의 **Spring + PostgreSQL 백엔드** 구조를 정리한 것이다.
+제품/계약 스펙·Evidence는 루트 [`BE.md`](../BE.md)를 따른다.
+
 핵심 목표는 **기능(도메인) 단위로 코드를 묶어서**, 기능 추가·변경 시 영향 범위를 쉽게 파악하는 것이다.
 
 MVP 스코프는 3대 기능으로 고정되어 있다: (1) 신청자·건강정보 입력, (2) AI 위험도 분석(FastAPI 연동), (3) 대시보드 기록 관리.
+
+### 상태 전이 (BR)
+
+```
+PENDING_AI → AI_COMPLETED   (compute-risk score 성공)
+AI_COMPLETED → FINALIZED    (PATCH)
+그 외 → 400 INVALID_STATUS_TRANSITION
+```
+
+`AssessmentStatus.canTransitionTo` / `AssessmentService.updateAssessment`에서 강제한다.
+
+### AI 연동
+
+- `AIClient.score` / `explain` 분리, RestTemplate connect/read **3초**
+- score 실패 → 502 `AI_SERVICE_UNAVAILABLE` / 504 `AI_SERVICE_TIMEOUT`, PENDING_AI 유지
+- explain 실패 → score만 저장 후 `AI_COMPLETED` (fallback)
+- 네트워크 호출은 DB 트랜잭션 밖 (`TransactionTemplate`)
+
+### 오류 코드
+
+`GlobalExceptionHandler`: INVALID_REQUEST, INVALID_STATUS_TRANSITION, NOT_FOUND, AI_SERVICE_UNAVAILABLE, AI_SERVICE_TIMEOUT, INTERNAL_ERROR
 
 ---
 
