@@ -4,6 +4,7 @@
 - **웹(Next.js)** · **앱(Expo)** 은 DB에 직접 연결하지 않고, Spring API(`http://localhost:8080` 등)를 호출합니다.
 - 따라서 웹·앱 모두 동일한 PostgreSQL 데이터(일자리, 신청자, 평가 기록 등)를 API를 통해 사용합니다.
 - 공공데이터는 운영 도메인(Applicant/Assessment/Health)과 분리된 `external_ref` Reference/Context 스키마와 `ai/data/external` 파일 snapshot으로 관리합니다.
+- 분석(DA)은 `analytics` Star Schema와 `analytics.v_kpi_*` 뷰로 제품·Reference KPI를 재현하며, 외부 통계로 개인 score를 바꾸지 않습니다. 상세는 `DA.md`.
 
 ## 설정 요약
 
@@ -47,4 +48,16 @@ DB 스키마와 DQ:
 cd spring
 ./db/apply-schema.sh
 PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/external_checks.sql
+PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/analytics_checks.sql
+```
+
+## Analytics KPI (DA)
+
+```bash
+cd spring
+./db/apply-schema.sh
+./db/pipeline/run_all.sh
+
+PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring \
+  -c "SELECT * FROM analytics.v_kpi_risk_grade_mix ORDER BY full_date DESC LIMIT 20;"
 ```

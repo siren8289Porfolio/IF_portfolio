@@ -54,6 +54,7 @@ done
 
 run_sql "$SCRIPT_DIR/analytics/01_star_schema.sql"
 run_sql "$SCRIPT_DIR/analytics/02_refresh_fact.sql"
+run_sql "$SCRIPT_DIR/analytics/03_kpi_views.sql"
 
 if [[ "$RUN_PIPELINE" == true ]]; then
   echo "==> 파이프라인 실행"
@@ -68,3 +69,4 @@ echo "완료. 검증:"
 echo "  psql ... -f db/verify-db-efficiency.sql"
 echo "  psql ... -f db/quality/checks.sql"
 echo "  psql ... -f db/quality/external_checks.sql"
+echo "  psql ... -f db/quality/analytics_checks.sql"

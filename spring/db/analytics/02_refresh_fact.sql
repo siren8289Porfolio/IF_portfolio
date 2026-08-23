@@ -40,9 +40,17 @@ ON CONFLICT (applicant_id) DO UPDATE SET
     age          = EXCLUDED.age,
     loaded_at    = now();
 
+-- dim_organization (admin_user.organization)
+INSERT INTO analytics.dim_organization (organization, loaded_at)
+SELECT DISTINCT btrim(au.organization), now()
+FROM admin_user au
+WHERE au.organization IS NOT NULL AND btrim(au.organization) <> ''
+ON CONFLICT (organization) DO UPDATE SET
+    loaded_at = now();
+
 -- fact 증분 upsert (마지막 적재 이후 변경분)
 INSERT INTO analytics.fact_assessment (
-    assessment_id, date_id, job_id, applicant_id, status,
+    assessment_id, date_id, job_id, applicant_id, org_id, status,
     total_risk_percent, risk_grade, physical_level,
     assessed_at, source_updated_at, loaded_at
 )
@@ -53,6 +61,7 @@ SELECT
      + EXTRACT(DAY FROM (a.assessed_at AT TIME ZONE 'UTC')::date)::int),
     a.job_id,
     a.applicant_id,
+    o.org_id,
     a.status,
     r.total_risk_percent,
     r.risk_grade,
@@ -63,6 +72,9 @@ SELECT
 FROM assessment a
 JOIN health_snapshot h ON h.health_id = a.health_id
 LEFT JOIN ai_risk_result r ON r.ai_result_id = a.ai_result_id
+LEFT JOIN admin_user au ON au.admin_id = a.admin_id
+LEFT JOIN analytics.dim_organization o
+    ON o.organization = btrim(au.organization)
 WHERE a.updated_at > COALESCE(
     (SELECT max(source_updated_at) FROM analytics.fact_assessment),
     '1970-01-01'::timestamptz
@@ -71,6 +83,7 @@ ON CONFLICT (assessment_id) DO UPDATE SET
     date_id            = EXCLUDED.date_id,
     job_id             = EXCLUDED.job_id,
     applicant_id       = EXCLUDED.applicant_id,
+    org_id             = EXCLUDED.org_id,
     status             = EXCLUDED.status,
     total_risk_percent = EXCLUDED.total_risk_percent,
     risk_grade         = EXCLUDED.risk_grade,

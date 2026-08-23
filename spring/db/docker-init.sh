@@ -20,3 +20,4 @@ for f in "$DB_DIR"/external/0*.sql; do
 done
 
 run_sql "$DB_DIR/analytics/01_star_schema.sql"
+run_sql "$DB_DIR/analytics/03_kpi_views.sql"

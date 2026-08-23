@@ -20,6 +20,9 @@ psql -h "$PG_HOST" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 
   -f "$SCRIPT_DIR/../quality/checks.sql"
 
 psql -h "$PG_HOST" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
+  -f "$SCRIPT_DIR/../quality/analytics_checks.sql"
+
+psql -h "$PG_HOST" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
   -f "$SCRIPT_DIR/refresh_summary.sql"
 
 psql -h "$PG_HOST" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 <<SQL
