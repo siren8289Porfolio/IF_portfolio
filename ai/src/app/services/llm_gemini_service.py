@@ -5,15 +5,23 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict
+import time
+from typing import Any, Dict, Optional
 
 from ..schemas import ExplainRequest, ExplainResponse, FactorExplanation
-from .guardrails import mask_pii, validate_explain_payload
+from .guardrails import (
+    mask_pii,
+    strip_unknown_explain_keys,
+    validate_explain_payload,
+)
 
 logger = logging.getLogger(__name__)
 
-# GEMINI_MODEL 미설정 시 기본값 (gemini-1.5-flash가 안정적)
+PROMPT_VERSION = os.environ.get("GEMINI_PROMPT_VERSION", "prompt_v1")
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+# 설명 경로는 비핵심 — timeout으로 격리 (초)
+GEMINI_TIMEOUT_SECONDS = float(os.environ.get("GEMINI_TIMEOUT_SECONDS", "8"))
+
 _client = None
 
 
@@ -37,6 +45,8 @@ SYSTEM_INSTRUCTION = [
     "당신은 고령자 일자리 위험도 분석 시스템의 설명 전용 도우미입니다.",
     "당신은 새로운 위험도 점수를 계산하거나 기존 점수를 변경해서는 안 됩니다.",
     "위험도 점수(risk_score)와 구간(risk_band), 주요 요인(top_factors)만을 해석해야 합니다.",
+    "응답 JSON에 risk_score, risk_band, risk_grade, matching_score 등 점수 필드를 넣지 마십시오.",
+    "제공된 근거가 부족하면 추측하지 말고 한계를 summary/guidance에 명시하십시오.",
     "새로운 의학적/법률적 판단(진단, 처방, 위법/합법 등)을 해서는 안 됩니다.",
     "허용/불허/적합/부적합 등 최종 결정을 암시하는 표현을 사용해서는 안 됩니다.",
     "출력은 반드시 JSON 형식으로만 응답해야 하며, 추가 설명 문장은 절대 포함하지 마십시오.",
@@ -47,20 +57,31 @@ SYSTEM_INSTRUCTION = [
 def _build_user_prompt(req: ExplainRequest) -> str:
     lines = []
     for f in req.top_factors:
-        lines.append(f"- name: {f.name}, value: {f.value:.3f}, weight: {f.weight:.3f}, description: {f.description or ''}")
+        lines.append(
+            f"- name: {f.name}, value: {f.value:.3f}, weight: {f.weight:.3f}, "
+            f"description: {f.description or ''}"
+        )
     safe_summary = mask_pii(req.case_summary)
+    trace = ""
+    if req.result_id or req.result_version:
+        trace = (
+            f"\n- result_id: {req.result_id or '-'}"
+            f"\n- result_version: {req.result_version or '-'}"
+        )
     return f"""
 다음 입력 정보를 기반으로 JSON 설명을 생성해 주세요.
+prompt_version={PROMPT_VERSION}
 
 [입력 데이터]
-- 위험도 점수(risk_score): {req.risk_score:.1f}
-- 위험도 구간(risk_band): {req.risk_band}
+- 위험도 점수(risk_score): {req.risk_score:.1f}  (변경 금지, 해석만)
+- 위험도 구간(risk_band): {req.risk_band}  (변경 금지)
 - 주요 기여 요인(Top N):
 {os.linesep.join(lines) or "- (요인 없음)"}
-- 케이스 요약(비식별): {safe_summary}
+- 케이스 요약(비식별): {safe_summary}{trace}
 
 [출력 요구사항]
 - 반드시 아래 JSON 스키마를 따르십시오. JSON 외의 다른 텍스트는 포함하지 마십시오.
+- risk_score / risk_band 값을 바꾸거나 새 점수를 제안하지 마십시오.
 
 {{
   "summary": "string, 총 위험도에 대한 1개 단락 요약",
@@ -74,22 +95,51 @@ def _build_user_prompt(req: ExplainRequest) -> str:
 def _extract_json(raw: str) -> Dict[str, Any]:
     """응답에서 JSON 블록만 추출 (마크다운 ```json ... ``` 허용)."""
     raw = (raw or "").strip()
-    # ```json ... ``` 또는 ``` ... ``` 제거
     m = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
     if m:
         raw = m.group(1).strip()
     return json.loads(raw)
 
 
+def _log_observe(
+    *,
+    fallback: bool,
+    latency_ms: float,
+    result_id: Optional[str],
+    error: Optional[str] = None,
+) -> None:
+    logger.info(
+        "explain_observe prompt_version=%s model_version=%s fallback=%s "
+        "latency_ms=%.1f result_id=%s error=%s",
+        PROMPT_VERSION,
+        GEMINI_MODEL if not fallback or error else GEMINI_MODEL,
+        fallback,
+        latency_ms,
+        result_id or "-",
+        error or "-",
+    )
+
+
 def generate_explanation(req: ExplainRequest) -> ExplainResponse:
+    started = time.perf_counter()
     client = _get_client()
     if not client:
-        logger.info("explain: no Gemini client, returning fallback")
-        return _fallback_response(req)
+        resp = _fallback_response(req)
+        _log_observe(
+            fallback=True,
+            latency_ms=(time.perf_counter() - started) * 1000,
+            result_id=req.result_id,
+            error="no_client",
+        )
+        return resp
 
     prompt = _build_user_prompt(req)
     try:
         from google.genai.types import GenerateContentConfig
+
+        # Timeout은 환경변수 GEMINI_TIMEOUT_SECONDS로 문서화(클라이언트/SDK별 적용은 확장).
+        # 설명 경로는 실패 시 항상 fallback → score 경로와 격리.
+        _ = GEMINI_TIMEOUT_SECONDS
         resp = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
@@ -102,34 +152,84 @@ def generate_explanation(req: ExplainRequest) -> ExplainResponse:
         raw = (resp.text or "").strip()
         if not raw:
             logger.warning("explain: Gemini returned empty text")
-            return _fallback_response(req)
-        data = _extract_json(raw)
-        validate_explain_payload(data)
+            out = _fallback_response(req)
+            _log_observe(
+                fallback=True,
+                latency_ms=(time.perf_counter() - started) * 1000,
+                result_id=req.result_id,
+                error="empty_response",
+            )
+            return out
+
+        raw_obj = _extract_json(raw)
+        validate_explain_payload(raw_obj)
+        data = strip_unknown_explain_keys(raw_obj)
+
         factor_explanations = [
-            FactorExplanation(name=fe.get("name", ""), text=fe.get("text", ""))
+            FactorExplanation(name=fe.get("name", ""), text=mask_pii(str(fe.get("text", ""))))
             for fe in data.get("factor_explanations", [])
+            if isinstance(fe, dict)
         ]
-        return ExplainResponse(
+        out = ExplainResponse(
             summary=mask_pii(str(data.get("summary", ""))),
             factor_explanations=factor_explanations,
             guidance=mask_pii(str(data.get("guidance", ""))),
             disclaimer=mask_pii(str(data.get("disclaimer", ""))),
+            prompt_version=PROMPT_VERSION,
+            model_version=GEMINI_MODEL,
+            fallback=False,
         )
+        _log_observe(
+            fallback=False,
+            latency_ms=(time.perf_counter() - started) * 1000,
+            result_id=req.result_id,
+        )
+        return out
     except json.JSONDecodeError as e:
         logger.warning("explain: JSON parse error: %s", e)
-        return _fallback_response(req)
+        out = _fallback_response(req)
+        _log_observe(
+            fallback=True,
+            latency_ms=(time.perf_counter() - started) * 1000,
+            result_id=req.result_id,
+            error="json_decode",
+        )
+        return out
     except ValueError as e:
         logger.warning("explain: validation error: %s", e)
-        return _fallback_response(req)
+        out = _fallback_response(req)
+        _log_observe(
+            fallback=True,
+            latency_ms=(time.perf_counter() - started) * 1000,
+            result_id=req.result_id,
+            error="validation",
+        )
+        return out
     except Exception as e:
         logger.warning("explain: Gemini API error: %s", e)
-        return _fallback_response(req)
+        out = _fallback_response(req)
+        _log_observe(
+            fallback=True,
+            latency_ms=(time.perf_counter() - started) * 1000,
+            result_id=req.result_id,
+            error=type(e).__name__,
+        )
+        return out
 
 
 def _fallback_response(req: ExplainRequest) -> ExplainResponse:
     return ExplainResponse(
-        summary=f"위험도 점수 {req.risk_score:.1f}% ({req.risk_band})에 대한 자동 설명 생성에 실패했습니다.",
+        summary=(
+            f"위험도 점수 {req.risk_score:.1f}% ({req.risk_band})에 대한 "
+            "자동 설명 생성에 실패했습니다. 제공된 점수·요인을 그대로 검토해 주세요."
+        ),
         factor_explanations=[],
-        guidance="시스템 또는 모델 규정 위반으로 상세 해석을 제공하지 못했습니다. 점수와 주요 요인을 직접 검토해 주세요.",
+        guidance=(
+            "설명 서비스 장애 또는 규정 검증 실패로 상세 해석을 제공하지 못했습니다. "
+            "authoritative 점수와 주요 요인을 직접 검토해 주세요."
+        ),
         disclaimer="본 결과는 판단 보조 자료일 뿐이며, 최종 판단과 책임은 담당자에게 있습니다.",
+        prompt_version=PROMPT_VERSION,
+        model_version=GEMINI_MODEL,
+        fallback=True,
     )

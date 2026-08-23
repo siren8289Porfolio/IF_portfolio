@@ -1,14 +1,36 @@
-"""LLM 출력 검증: 금지어, 필수 문구, PII 마스킹."""
+"""LLM 출력 검증: 금지어, 필수 문구, PII 마스킹, score 변조 필드 차단."""
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 FORBIDDEN_TERMS = [
     "허용", "불허", "적합", "부적합",
     "진단", "처방",
     "위법", "합법",
 ]
+
+# LLM이 authoritative score를 바꾸려는 필드를 응답에 넣으면 거부
+SCORE_MUTATION_FIELDS: Set[str] = {
+    "risk_score",
+    "riskScore",
+    "risk_band",
+    "riskBand",
+    "risk_grade",
+    "riskGrade",
+    "total_risk_percent",
+    "matching_score",
+    "matchingScore",
+    "new_score",
+    "adjusted_score",
+}
+
+ALLOWED_EXPLAIN_KEYS: Set[str] = {
+    "summary",
+    "factor_explanations",
+    "guidance",
+    "disclaimer",
+}
 
 PII_PATTERNS = [
     r"\d{6}-\d{7}",
@@ -31,7 +53,21 @@ def contains_forbidden_terms(text: str) -> bool:
     return any(term in lower for term in FORBIDDEN_TERMS)
 
 
+def reject_score_mutation_fields(payload: Dict[str, Any]) -> None:
+    """AI-FR-03: score/grade/matching 변경 필드는 출력에서 거부."""
+    found = [k for k in payload.keys() if k in SCORE_MUTATION_FIELDS]
+    if found:
+        raise ValueError(f"score mutation fields forbidden in llm payload: {found}")
+
+
+def strip_unknown_explain_keys(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """스키마 외 필드는 폐기 (AI-FR-02)."""
+    return {k: v for k, v in payload.items() if k in ALLOWED_EXPLAIN_KEYS}
+
+
 def validate_explain_payload(payload: Dict[str, Any]) -> None:
+    reject_score_mutation_fields(payload)
+
     required = ["summary", "factor_explanations", "guidance", "disclaimer"]
     for key in required:
         if key not in payload:

@@ -102,7 +102,12 @@ uvicorn src.app.main:app --reload
 
 - `POST /score`
   - 입력: 연령대, 지역, 직무군, 근무강도, 환경/건강 태그
-  - 내부에서 `job_risk_by_region.parquet`를 읽어 0~100 점수와 위험 레벨을 계산
+  - 내부에서 `job_risk_by_region.parquet`를 읽어 0~100 점수와 주요 요인을 계산
+  - **authoritative** — LLM이 점수를 바꾸지 않음
+- `POST /explain`
+  - 입력: 이미 계산된 `risk_score` / `risk_band` / `top_factors` / 비식별 요약
+  - Gemini로 자연어 설명만 생성 (`prompt_v1`). 실패 시 deterministic fallback
+  - 스펙·Evidence: 루트 `AI.md`
 
 ### 6. 테스트
 
@@ -110,8 +115,10 @@ uvicorn src.app.main:app --reload
 PYTHONPATH=. python3 -m unittest discover -s tests
 ```
 
+포함: 공공 ingestion, AI score 불변성·guardrails·fallback (`tests/test_ai_invariants.py`).
+
 ### 7. 다음 확장 포인트
 
 - `국민건강보험공단_노인장기요양보험 등급판정 현황`으로 `care_risk_by_region` mart 추가
 - 노인일자리 실태조사(개인 데이터)로 feature set 만들고 ML 모델(`models/`) 추가
-- `src/app/services/llm_service.py`를 만들어 점수/요인 → 자연어 설명까지 생성
+- token/cost 계측, live Gemini evaluation set
