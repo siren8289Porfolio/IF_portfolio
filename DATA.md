@@ -8,6 +8,7 @@
 - Backend(BE) API·상태전이·AI 연동 스펙은 `BE.md`.
 - GenAI 설명(Gemini) 스펙·score 불변 원칙은 `AI.md`.
 - ML/DL 경계·규칙통계 baseline(`rule_stat_v1`)은 `ML.md` (ML serving은 PROPOSED).
+- 품질·Release Gate·불변식은 `QA.md`.
 
 ## 설정 요약
 

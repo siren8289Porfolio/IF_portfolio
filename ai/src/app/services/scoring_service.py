@@ -71,7 +71,14 @@ def score_from_request(req: ScoreRequest) -> ScoreResponse:
 
   # 직무 / 나이 / 강도(건강) / 태그에 따른 가산 (PoC용 룰)
   adjustment = 0.0
-  factors: List[ScoreFactor] = []
+  factors: List[ScoreFactor] = [
+    ScoreFactor(
+      name="region",
+      value=region_score,
+      weight=region_score,
+      description=f"지역 통계 baseline: {req.region}",
+    )
+  ]
 
   # 나이 구간: 고령일수록 위험 가산 (노인 일자리 맥락)
   age_band = (req.age_band or "").strip()
@@ -200,8 +207,17 @@ def score_from_request(req: ScoreRequest) -> ScoreResponse:
 
   risk_band = band_from_score(risk_score)
 
-  # 중요도 순으로 정렬된 top_factors
+  # 중요도 순으로 정렬된 top_factors (QA: 기여요인 ≥ 1 — region baseline으로 보장)
   factors_sorted = sorted(factors, key=lambda f: abs(f.weight), reverse=True)
+  if not factors_sorted:
+    factors_sorted = [
+      ScoreFactor(
+        name="baseline",
+        value=risk_score,
+        weight=0.0,
+        description="fallback factor (empty rule set)",
+      )
+    ]
 
   return ScoreResponse(
     risk_score=risk_score,

@@ -131,7 +131,7 @@ public class AIRiskService {
                 .orElseGet(assessment::getAiRiskResult);
         AIRiskResult result = existing != null ? existing : new AIRiskResult();
         result.setTotalRiskPercent((int) Math.round(scoreResp.getRiskScore()));
-        result.setRiskGrade(gradeOf(scoreResp.getRiskBand()));
+        result.setRiskGrade(gradeOf(scoreResp.getRiskScore()));
         result.setGeneratedAt(OffsetDateTime.now(ZoneOffset.UTC));
         String scoringVersion = scoreResp.getScoringVersion();
         result.setModelVersion(
@@ -150,8 +150,22 @@ public class AIRiskService {
         assessmentRepository.save(assessment);
     }
 
-    /** FastAPI riskBand → 저장용 등급 (LOW/MID/HIGH). */
-    public static String gradeOf(String riskBand) {
+    /**
+     * POL-002 / SRS BR-004: risk percent → LOW/MID/HIGH.
+     * {@code <=40 LOW}, {@code 41..60 MID}, {@code >=61 HIGH}.
+     */
+    public static String gradeOf(double riskPercent) {
+        if (riskPercent <= 40.0) {
+            return "LOW";
+        }
+        if (riskPercent <= 60.0) {
+            return "MID";
+        }
+        return "HIGH";
+    }
+
+    /** FastAPI risk_band(한글) → 표시용 매핑. 저장 등급은 {@link #gradeOf(double)} 사용. */
+    public static String gradeOfBand(String riskBand) {
         if (riskBand == null) {
             return "MID";
         }

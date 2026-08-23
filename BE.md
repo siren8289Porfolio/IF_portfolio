@@ -43,7 +43,7 @@ Out of Scope (MVP): 실인증 SSO, ML 모델 서빙, 직무 매칭 추천 API, A
 | FR-008~010 | 상태 전이·목록·삭제 | AssessmentService | IMPLEMENTED |
 | NFR-001 | compute-risk P95 ≤ 3초 | RestTemplate 3s timeout | DESIGNED (timeout 설정 IMPLEMENTED, P95 측정 NOT TESTED) |
 | NFR-002~003 | 점수 불변, 개인정보 마스킹 | explain 분리, AI guardrails | DESIGNED |
-| BR-004~006 | 등급·상태전이 규칙 | `gradeOf`, `ALLOWED_TRANSITIONS` | IMPLEMENTED |
+| BR-004~006 | 등급·상태전이 규칙 | `gradeOf(percent)` POL-002, `ALLOWED_TRANSITIONS` | IMPLEMENTED |
 
 ---
 
