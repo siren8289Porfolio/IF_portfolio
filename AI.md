@@ -125,7 +125,7 @@ RAG / autonomous agent: **필수 아님** — 현재 미도입.
 
 ## 8. ML/DL 문서와의 관계
 
-- **ML/DL:** score baseline·데이터·모델 후보
+- **ML/DL:** [`ML.md`](ML.md) — score baseline(`rule_stat_v1`), ML PROPOSED, DL N/A
 - **AI (본 문서):** Gemini 설명, prompt, groundedness, GenAIOps
 - 연결키: input / result / version / evaluation evidence
 

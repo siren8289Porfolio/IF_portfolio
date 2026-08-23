@@ -19,6 +19,9 @@ public class ScoreResponseDto {
     private double ruleBasedAdjustment;
     @JsonProperty("top_factors")
     private List<ScoreFactorDto> topFactors = new ArrayList<>();
+    /** Authoritative baseline version from FastAPI (e.g. rule_stat_v1). */
+    @JsonProperty("scoring_version")
+    private String scoringVersion;
 
     public double getRiskScore() { return riskScore; }
     public void setRiskScore(double riskScore) { this.riskScore = riskScore; }
@@ -30,4 +33,6 @@ public class ScoreResponseDto {
     public void setRuleBasedAdjustment(double ruleBasedAdjustment) { this.ruleBasedAdjustment = ruleBasedAdjustment; }
     public List<ScoreFactorDto> getTopFactors() { return topFactors; }
     public void setTopFactors(List<ScoreFactorDto> topFactors) { this.topFactors = topFactors != null ? topFactors : new ArrayList<>(); }
+    public String getScoringVersion() { return scoringVersion; }
+    public void setScoringVersion(String scoringVersion) { this.scoringVersion = scoringVersion; }
 }

@@ -103,12 +103,13 @@ uvicorn src.app.main:app --reload
 - `POST /score`
   - 입력: 연령대, 지역, 직무군, 근무강도, 환경/건강 태그
   - 내부에서 `job_risk_by_region.parquet`를 읽어 0~100 점수와 주요 요인을 계산
-  - **authoritative** — LLM이 점수를 바꾸지 않음
+  - **authoritative** — LLM이 점수를 바꾸지 않음 (`scoring_version=rule_stat_v1`, 상세 `ML.md`)
 - `POST /explain`
   - 입력: 이미 계산된 `risk_score` / `risk_band` / `top_factors` / 비식별 요약
   - Gemini로 자연어 설명만 생성 (`prompt_v1`). 실패 시 deterministic fallback
   - 스펙·Evidence: 루트 `AI.md`
 
+ML 실험 공간(미서빙): `ai/ml/` — 승인 gate 전 `/score`에 연결하지 않음.
 ### 6. 테스트
 
 ```bash

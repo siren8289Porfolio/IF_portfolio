@@ -7,6 +7,7 @@
 - 분석(DA)은 `analytics` Star Schema와 `analytics.v_kpi_*` 뷰로 제품·Reference KPI를 재현하며, 외부 통계로 개인 score를 바꾸지 않습니다. 상세는 `DA.md`.
 - Backend(BE) API·상태전이·AI 연동 스펙은 `BE.md`.
 - GenAI 설명(Gemini) 스펙·score 불변 원칙은 `AI.md`.
+- ML/DL 경계·규칙통계 baseline(`rule_stat_v1`)은 `ML.md` (ML serving은 PROPOSED).
 
 ## 설정 요약
 

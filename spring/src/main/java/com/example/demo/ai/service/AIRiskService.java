@@ -133,7 +133,11 @@ public class AIRiskService {
         result.setTotalRiskPercent((int) Math.round(scoreResp.getRiskScore()));
         result.setRiskGrade(gradeOf(scoreResp.getRiskBand()));
         result.setGeneratedAt(OffsetDateTime.now(ZoneOffset.UTC));
-        result.setModelVersion("elder-risk-poc-v1");
+        String scoringVersion = scoreResp.getScoringVersion();
+        result.setModelVersion(
+                (scoringVersion != null && !scoringVersion.isBlank())
+                        ? scoringVersion
+                        : "rule_stat_v1");
         result.setExplanationJson(explanationJson);
         result.setAssessment(assessment);
         result = riskResultRepository.save(result);

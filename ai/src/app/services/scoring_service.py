@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ..schemas import ScoreRequest, ScoreResponse, ScoreFactor
+from .scoring_baseline import BASELINE_VERSION, band_from_score
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -44,17 +45,6 @@ def lookup_region_score(region: str) -> float:
   if not partial.empty:
     return float(partial["risk_score"].mean())
   return 0.0
-
-
-def band_from_score(score: float) -> str:
-  """구간: 낮음(0~39), 보통(40~59), 높음(60~79), 매우 높음(80~100)."""
-  if score < 40:
-    return "낮음"
-  if score < 60:
-    return "보통"
-  if score < 80:
-    return "높음"
-  return "매우 높음"
 
 
 def score_from_request(req: ScoreRequest) -> ScoreResponse:
@@ -219,5 +209,6 @@ def score_from_request(req: ScoreRequest) -> ScoreResponse:
     region_score=region_score,
     rule_based_adjustment=adjustment,
     top_factors=factors_sorted[:5],
+    scoring_version=BASELINE_VERSION,
   )
 

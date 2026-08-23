@@ -45,6 +45,10 @@ class ScoreResponse(BaseModel):
   region_score: float
   rule_based_adjustment: float
   top_factors: List[ScoreFactor]
+  scoring_version: str = Field(
+    default="rule_stat_v1",
+    description="Authoritative baseline version (ML.md). Not an LLM/prompt version.",
+  )
 
 
 # --- Explain (LLM 문서화 전용) ---
