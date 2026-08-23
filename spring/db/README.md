@@ -19,8 +19,13 @@ spring/db/
 ├── analytics/                    # Star Schema (로드맵 2)
 │   ├── 01_star_schema.sql      #   dim_date/job/applicant + fact_assessment
 │   └── 02_refresh_fact.sql       #   updated_at 증분 UPSERT (로드맵 10)
+├── external/                     # 공공 Reference/Context (운영 도메인과 분리)
+│   ├── 01_reference_schema.sql  #   raw snapshot + serving master/reference
+│   ├── 02_indexes_constraints.sql
+│   └── 03_seed_sources.sql      #   확인된 공공·공식 Source Catalog
 ├── quality/
-│   └── checks.sql                #   PK/FK/허용값/급감 검사 (로드맵 13)
+│   ├── checks.sql                #   운영 도메인 PK/FK/허용값/급감 검사
+│   └── external_checks.sql       #   Reference DQ gate
 └── pipeline/
     ├── run_all.sh                #   적재→검사→MV갱신→로그 (로드맵 14)
     └── refresh_summary.sql       #   MV만 갱신
@@ -56,7 +61,21 @@ cd spring
 cd spring
 PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/verify-db-efficiency.sql
 PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/checks.sql
+PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/external_checks.sql
 ```
+
+## 공공 Reference/Context 분리
+
+`external_ref` 스키마는 공공데이터 수집과 serving 전용이다. `applicant`, `health_snapshot`, `assessment`, `ai_risk_result` 등 운영 도메인 테이블은 외부 수집 성공 여부와 FK로 묶지 않는다. 따라서 외부 API 장애나 schema drift가 발생해도 핵심 평가 트랜잭션은 기존 운영 테이블 기준으로 계속 동작한다.
+
+주요 테이블:
+
+| layer | table |
+|---|---|
+| source contract | `external_ref.source_catalog` |
+| raw immutable | `external_ref.raw_external_snapshot` |
+| run/DQ/lineage | `external_ref.external_ingestion_run`, `external_ref.dq_check_result`, `external_ref.lineage_event` |
+| serving | `external_ref.region_master`, `external_ref.organization_master`, `external_ref.job_posting_reference`, `external_ref.job_reference`, `external_ref.elderly_employment_snapshot`, `external_ref.ai_job_risk_profile` |
 
 ## Docker
 
@@ -77,5 +96,6 @@ docker compose up --build   # postgres 최초 기동 시 docker-init.sh → oper
 | 13 | 품질 테스트 | `quality/checks.sql` |
 | 14 | 파이프라인 | `pipeline/run_all.sh` |
 | 15 | 실행 로그 | `pipeline_run_log` 테이블 |
+| DE-01~05 | 공공 Source Catalog / raw→serving / DQ / lineage / 실패 격리 | `external/`, `quality/external_checks.sql`, `ai/src/etl/02_external_public_ingestion.py` |
 
 미적용 (데이터 규모/MVP): 파티셔닝(7), 클러스터링(8), CDC(11), Spark(12)

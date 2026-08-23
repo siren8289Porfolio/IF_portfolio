@@ -19,6 +19,8 @@ ai/
     etl/
       00_convert_encoding.py
       01_build_job_risk_by_region.py
+      02_external_public_ingestion.py
+      external_sources.json
 
     app/
       main.py
@@ -61,7 +63,36 @@ python -m src.etl.01_build_job_risk_by_region
 - `data/interim/moel_accident_2023.parquet`
 - `data/marts/job_risk_by_region.parquet`
 
-### 4. FastAPI 실행
+### 4. 공공 Reference/Context 수집
+
+외부 공공데이터는 개인 위험도 정답(label)이 아니라 Reference/Context다. 수집 산출물은 `ai/data/external` 아래에 raw snapshot, DQ 결과, lineage, serving parquet으로 분리 저장하며 Applicant/Assessment 트랜잭션과 연결하지 않는다.
+
+로컬 파일 snapshot으로 실행:
+
+```bash
+python3 -m src.etl.02_external_public_ingestion \
+  --source self_support_region_code \
+  --input-file data/raw/sample_region.xml \
+  --idempotency-key 2026-08
+```
+
+운영 API endpoint로 실행할 때는 공공데이터포털 catalog URL이 아니라 실제 호출 endpoint URL을 넘긴다. 서비스키는 코드와 로그에 남기지 않고 환경변수나 secret store에서 주입한다.
+
+```bash
+python3 -m src.etl.02_external_public_ingestion \
+  --source self_support_region_code \
+  --url "$PUBLIC_DATA_API_URL" \
+  --idempotency-key 2026-08-23T00
+```
+
+생성 결과:
+
+- `data/external/raw/*.jsonl`: immutable raw snapshot
+- `data/external/validated/*_dq.json`: DQ gate 결과
+- `data/external/lineage/*.json`: source→raw→serving lineage
+- `data/external/serving/*.parquet`: BE/DA 소비용 Reference/Context snapshot
+
+### 5. FastAPI 실행
 
 ```bash
 uvicorn src.app.main:app --reload
@@ -73,9 +104,14 @@ uvicorn src.app.main:app --reload
   - 입력: 연령대, 지역, 직무군, 근무강도, 환경/건강 태그
   - 내부에서 `job_risk_by_region.parquet`를 읽어 0~100 점수와 위험 레벨을 계산
 
-### 5. 다음 확장 포인트
+### 6. 테스트
+
+```bash
+PYTHONPATH=. python3 -m unittest discover -s tests
+```
+
+### 7. 다음 확장 포인트
 
 - `국민건강보험공단_노인장기요양보험 등급판정 현황`으로 `care_risk_by_region` mart 추가
 - 노인일자리 실태조사(개인 데이터)로 feature set 만들고 ML 모델(`models/`) 추가
 - `src/app/services/llm_service.py`를 만들어 점수/요인 → 자연어 설명까지 생성
-

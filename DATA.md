@@ -3,6 +3,7 @@
 - **백엔드(Spring)** 만 DB를 사용하며, **PostgreSQL** 단일 DB입니다.
 - **웹(Next.js)** · **앱(Expo)** 은 DB에 직접 연결하지 않고, Spring API(`http://localhost:8080` 등)를 호출합니다.
 - 따라서 웹·앱 모두 동일한 PostgreSQL 데이터(일자리, 신청자, 평가 기록 등)를 API를 통해 사용합니다.
+- 공공데이터는 운영 도메인(Applicant/Assessment/Health)과 분리된 `external_ref` Reference/Context 스키마와 `ai/data/external` 파일 snapshot으로 관리합니다.
 
 ## 설정 요약
 
@@ -27,3 +28,23 @@ createdb if_spring
 ```
 
 Spring 비밀번호는 `spring/src/main/resources/application.yml`의 `password`를 `createuser` 시 입력한 값과 맞추면 됩니다.
+
+## 공공데이터 Ingestion
+
+외부 공공데이터는 개인 위험도 정답(label)이 아니며, BE/DA가 참조하는 지역·기관·공고·고용·산재 Context로만 사용합니다. 수집 실패, API 장애, schema drift는 raw snapshot과 DQ/lineage에 기록하고 serving 반영을 중단하지만 Applicant/Assessment 트랜잭션을 중단시키지 않습니다.
+
+```bash
+cd ai
+PYTHONPATH=. python3 -m src.etl.02_external_public_ingestion \
+  --source self_support_region_code \
+  --input-file data/raw/sample_region.xml \
+  --idempotency-key 2026-08
+```
+
+DB 스키마와 DQ:
+
+```bash
+cd spring
+./db/apply-schema.sh
+PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/external_checks.sql
+```

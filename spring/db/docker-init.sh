@@ -14,4 +14,9 @@ for f in "$DB_DIR"/operational/0*.sql; do
   run_sql "$f"
 done
 
+for f in "$DB_DIR"/external/0*.sql; do
+  [[ -f "$f" ]] || continue
+  run_sql "$f"
+done
+
 run_sql "$DB_DIR/analytics/01_star_schema.sql"

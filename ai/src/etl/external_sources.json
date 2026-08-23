@@ -1,0 +1,110 @@
+{
+  "senior_activity_system_code": {
+    "source_name": "노인사회활동 시스템 코드",
+    "source_url": "https://www.data.go.kr/data/15057083/openapi.do",
+    "source_type": "OPENAPI_XML",
+    "target": "region_master",
+    "schema_version": "2026-08",
+    "required_fields": ["source_key"],
+    "field_map": {
+      "source_key": ["dstrCd", "sidoCd", "sggCd", "orgCd", "code"],
+      "region_code": ["dstrCd", "sidoCd", "sggCd", "code"],
+      "region_name": ["dstrName", "sidoNm", "sggNm", "name"],
+      "parent_region_code": ["upperDstrCd", "parentCode"],
+      "region_level": ["largeClass", "middleClass", "smallClass", "level"]
+    }
+  },
+  "self_support_region_code": {
+    "source_name": "자립형일자리 코드",
+    "source_url": "https://www.data.go.kr/data/15058307/openapi.do",
+    "source_type": "OPENAPI_XML",
+    "target": "region_master",
+    "schema_version": "2026-08",
+    "required_fields": ["source_key", "region_code", "region_name"],
+    "field_map": {
+      "source_key": ["dstrCd"],
+      "region_code": ["dstrCd"],
+      "region_name": ["dstrName"],
+      "parent_region_code": ["upperDstrCd"],
+      "region_level": ["largeClass", "middleClass", "smallClass"]
+    }
+  },
+  "self_support_organization": {
+    "source_name": "자립형일자리 수행기관",
+    "source_url": "https://www.data.go.kr/data/15056961/openapi.do",
+    "source_type": "OPENAPI_XML",
+    "target": "organization_master",
+    "schema_version": "2026-08",
+    "required_fields": ["source_key", "organization_code", "organization_name"],
+    "field_map": {
+      "source_key": ["orgCd"],
+      "organization_code": ["orgCd"],
+      "organization_name": ["orgNm", "orgName"],
+      "organization_type": ["orgType", "orgSe"],
+      "region_code": ["dstrCd", "sidoCd", "sggCd"],
+      "address": ["addr", "address"],
+      "phone": ["telNo", "phone"]
+    }
+  },
+  "self_support_job_posting": {
+    "source_name": "자립형일자리 사업모집공고",
+    "source_url": "https://www.data.go.kr/data/15057200/openapi.do",
+    "source_type": "OPENAPI_XML",
+    "target": "job_posting_reference",
+    "schema_version": "2026-08",
+    "required_fields": ["source_key", "external_job_id"],
+    "field_map": {
+      "source_key": ["projNo", "jobId"],
+      "external_job_id": ["projNo", "jobId"],
+      "title": ["projNm", "title", "recrtTitle"],
+      "organization_code": ["orgCd"],
+      "region_code": ["dstrCd", "sidoCd", "sggCd"],
+      "job_category": ["jobClsf", "jobCategory"],
+      "employment_type": ["emplymType", "employmentType"],
+      "recruitment_count": ["recrtCnt", "recruitmentCount"],
+      "posting_start_date": ["recrtBgngYmd", "startDate"],
+      "posting_end_date": ["recrtEndYmd", "endDate"],
+      "status": ["recrtStts", "status"],
+      "workplace": ["workPlace", "workplace"]
+    }
+  },
+  "senuri_job_posting": {
+    "source_name": "노인 구인정보 Senuri",
+    "source_url": "https://www.data.go.kr/data/15015153/openapi.do",
+    "source_type": "OPENAPI_XML",
+    "target": "job_posting_reference",
+    "schema_version": "2026-08",
+    "required_fields": ["source_key", "external_job_id"],
+    "field_map": {
+      "source_key": ["jobId"],
+      "external_job_id": ["jobId"],
+      "title": ["jobTitle", "title"],
+      "organization_code": ["orgCd"],
+      "region_code": ["dstrCd", "regionCd"],
+      "job_category": ["jobClsf", "jobCategory"],
+      "employment_type": ["emplymType", "employmentType"],
+      "recruitment_count": ["recrtCnt", "recruitmentCount"],
+      "posting_start_date": ["recrtBgngYmd", "startDate"],
+      "posting_end_date": ["recrtEndYmd", "endDate"],
+      "status": ["recrtStts", "status"],
+      "workplace": ["workPlace", "workplace"]
+    }
+  },
+  "kosis_elderly_employment": {
+    "source_name": "KOSIS 공유서비스 OpenAPI",
+    "source_url": "https://kosis.kr/openapi/",
+    "source_type": "KOSIS",
+    "target": "elderly_employment_snapshot",
+    "schema_version": "2026-08",
+    "required_fields": ["reference_period", "region_code", "age_group", "metric"],
+    "field_map": {
+      "source_key": ["source_key", "DT", "PRD_DE"],
+      "reference_period": ["PRD_DE", "period", "reference_period"],
+      "region_code": ["C1", "region_code"],
+      "age_group": ["C2", "age_group"],
+      "metric": ["ITM_NM", "metric"],
+      "metric_value": ["DT", "value", "metric_value"],
+      "unit": ["UNIT_NM", "unit"]
+    }
+  }
+}

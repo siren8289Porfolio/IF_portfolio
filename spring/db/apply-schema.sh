@@ -47,6 +47,11 @@ for f in "$SCRIPT_DIR"/operational/0*.sql; do
   run_sql "$f"
 done
 
+for f in "$SCRIPT_DIR"/external/0*.sql; do
+  [[ -f "$f" ]] || continue
+  run_sql "$f"
+done
+
 run_sql "$SCRIPT_DIR/analytics/01_star_schema.sql"
 run_sql "$SCRIPT_DIR/analytics/02_refresh_fact.sql"
 
@@ -62,3 +67,4 @@ echo ""
 echo "완료. 검증:"
 echo "  psql ... -f db/verify-db-efficiency.sql"
 echo "  psql ... -f db/quality/checks.sql"
+echo "  psql ... -f db/quality/external_checks.sql"
