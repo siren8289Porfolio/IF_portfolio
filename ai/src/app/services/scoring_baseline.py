@@ -6,6 +6,8 @@ BASELINE_KIND = "rule_stat"
 BASELINE_VERSION = "rule_stat_v1"
 # Gemini prompt versions live in llm_gemini_service.PROMPT_VERSION — keep separate.
 SCORING_ENGINE = "authoritative_baseline"
+# PRD FR-004 chronicDiseaseFlag 가산 (의료 진단이 아닌 규칙 가중치)
+CHRONIC_DISEASE_DELTA = 8.0
 
 
 def band_from_score(score: float) -> str:

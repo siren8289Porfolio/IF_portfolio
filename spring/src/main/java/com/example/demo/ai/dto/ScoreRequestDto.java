@@ -23,6 +23,9 @@ public class ScoreRequestDto {
     private List<String> environmentFlags = new ArrayList<>();
     @JsonProperty("health_flags")
     private List<String> healthFlags = new ArrayList<>();
+    /** PRD FR-004 — HealthSnapshot.chronicDiseaseFlag */
+    @JsonProperty("chronic_disease_flag")
+    private Boolean chronicDiseaseFlag;
 
     public String getAgeBand() { return ageBand; }
     public void setAgeBand(String ageBand) { this.ageBand = ageBand; }
@@ -38,4 +41,6 @@ public class ScoreRequestDto {
     public void setEnvironmentFlags(List<String> environmentFlags) { this.environmentFlags = environmentFlags != null ? environmentFlags : new ArrayList<>(); }
     public List<String> getHealthFlags() { return healthFlags; }
     public void setHealthFlags(List<String> healthFlags) { this.healthFlags = healthFlags != null ? healthFlags : new ArrayList<>(); }
+    public Boolean getChronicDiseaseFlag() { return chronicDiseaseFlag; }
+    public void setChronicDiseaseFlag(Boolean chronicDiseaseFlag) { this.chronicDiseaseFlag = chronicDiseaseFlag; }
 }

@@ -112,6 +112,7 @@ public class AIRiskService {
         scoreReq.setPhysicalLevel(physicalLevel);
         scoreReq.setEnvironmentFlags(new ArrayList<>());
         scoreReq.setHealthFlags(new ArrayList<>());
+        scoreReq.setChronicDiseaseFlag(health.getChronicDiseaseFlag());
         return scoreReq;
     }
 
@@ -236,10 +237,12 @@ public class AIRiskService {
     }
 
     private static String buildCaseSummary(ScoreRequestDto req, Integer age) {
-        return String.format("%s, %s세, %s 직무, %s 근무강도 등",
+        String chronic = Boolean.TRUE.equals(req.getChronicDiseaseFlag()) ? ", 만성질환 여부=예" : "";
+        return String.format("%s, %s세, %s 직무, %s 근무강도%s 등",
                 req.getRegion(),
                 age != null ? age : "-",
                 req.getJobCategory(),
-                req.getWorkIntensity());
+                req.getWorkIntensity(),
+                chronic);
     }
 }

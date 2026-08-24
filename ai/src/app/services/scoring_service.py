@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ..schemas import ScoreRequest, ScoreResponse, ScoreFactor
-from .scoring_baseline import BASELINE_VERSION, band_from_score
+from .scoring_baseline import BASELINE_VERSION, CHRONIC_DISEASE_DELTA, band_from_score
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -178,14 +178,20 @@ def score_from_request(req: ScoreRequest) -> ScoreResponse:
     for keyword, w in health_weights.items():
       if keyword in flag:
         health_delta += w
+  # PRD FR-004: chronicDiseaseFlag → 집단 건강 요인 가산 (의료 진단 아님)
+  if req.chronic_disease_flag is True:
+    health_delta += CHRONIC_DISEASE_DELTA
   if health_delta:
     adjustment += health_delta
+    desc_parts = list(req.health_flags)
+    if req.chronic_disease_flag is True:
+      desc_parts.append("만성질환 여부=예")
     factors.append(
       ScoreFactor(
         name="health_flags",
-        value=float(len(req.health_flags)),
+        value=float(len(req.health_flags) + (1 if req.chronic_disease_flag else 0)),
         weight=health_delta,
-        description=", ".join(req.health_flags),
+        description=", ".join(desc_parts) if desc_parts else "건강 요인",
       )
     )
 

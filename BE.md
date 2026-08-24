@@ -67,6 +67,8 @@ Out of Scope (MVP): 실인증 SSO, ML 모델 서빙, 직무 매칭 추천 API, A
 - **성공 응답 `ApiResponse` 래핑:** DESIGNED (현재 성공 바디는 DTO/`Page` 직접 반환 — FE 호환)
 - 오류 코드: `INVALID_REQUEST`, `INVALID_STATUS_TRANSITION`, `NOT_FOUND`, `AI_SERVICE_UNAVAILABLE`, `AI_SERVICE_TIMEOUT`, `INTERNAL_ERROR`
 - AI 내부 contract(`/score`, `/explain`) 변경 시 Spring contract test — DESIGNED
+- FastAPI `/score` 입력: `age_band`, `region`, `job_category`, `work_intensity`, `physical_level`, `environment_flags`, `health_flags`, **`chronic_disease_flag`** (FR-004) — IMPLEMENTED
+- FastAPI는 분석 결과만 반환; Assessment 상태·원장 영속화는 Spring 소유 — IMPLEMENTED
 
 정적 스펙: [`spring/src/main/resources/openapi.yml`](spring/src/main/resources/openapi.yml)
 

@@ -21,8 +21,13 @@ from .services.llm_gemini_service import generate_explanation
 
 app = FastAPI(
   title="Elder Risk AI",
-  description="고령자 고용 위험도 PoC용 점수/리스크 API",
-  version="0.1.0",
+  description=(
+    "고령자 고용 위험도 AI Service. "
+    "`/score`는 규칙·통계 기반 authoritative 점수만 산출하고, "
+    "`/explain`은 Gemini로 설명만 생성한다(점수 불변). "
+    "Assessment 상태·원장 저장은 Spring이 소유하며 FastAPI는 분석 결과만 반환한다."
+  ),
+  version="0.2.0",
 )
 
 app.add_middleware(

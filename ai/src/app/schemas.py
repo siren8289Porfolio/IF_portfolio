@@ -30,6 +30,11 @@ class ScoreRequest(BaseModel):
     alias="healthFlags",
     example=["근골격계", "심혈관"],
   )
+  chronic_disease_flag: Optional[bool] = Field(
+    None,
+    validation_alias=AliasChoices("chronic_disease_flag", "chronicDiseaseFlag"),
+    description="만성질환 여부 (HealthSnapshot). True면 health 가중치 가산.",
+  )
 
 
 class ScoreFactor(BaseModel):
