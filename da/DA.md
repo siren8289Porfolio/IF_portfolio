@@ -58,7 +58,7 @@ IF DA의 두 축:
 | External DQ Pass Rate | DQ gate 통과 row 비율 | `analytics.v_kpi_external_dq_pass_rate` | DESIGNED |
 | Context Coverage | 분석 대상 지역·기간 중 KOSIS Context 존재 비율 | `analytics.v_kpi_context_coverage` | DESIGNED |
 
-상세 필드·파이프라인·provenance는 DE — Data Engineering Specification / `spring/db/external/` 과 동기화한다.
+상세 필드·파이프라인·provenance는 [`de/DE.md`](../de/DE.md) / `spring/db/external/` 과 동기화한다.
 
 ---
 
@@ -178,4 +178,4 @@ PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring \
 
 - PRD_v0
 - SRS_v0
-- DE — Data Engineering Specification (`spring/db/external/`, `ai/src/etl/02_external_public_ingestion.py`)
+- DE — Data Engineering Specification ([`de/DE.md`](../de/DE.md), `spring/db/external/`, `ai/src/etl/02_external_public_ingestion.py`)

@@ -110,7 +110,7 @@ docker compose up --build   # postgres 최초 기동 시 docker-init.sh → oper
 | 13 | 품질 테스트 | `quality/checks.sql` |
 | 14 | 파이프라인 | `pipeline/run_all.sh` |
 | 15 | 실행 로그 | `pipeline_run_log` 테이블 |
-| DE-01~05 | 공공 Source Catalog / raw→serving / DQ / lineage / 실패 격리 | `external/`, `quality/external_checks.sql`, `ai/src/etl/02_external_public_ingestion.py` |
+| DE-01~05 | 공공 Source Catalog / raw→serving / DQ / lineage / 실패 격리 | `de/DE.md`, `external/`, `quality/external_checks.sql`, `ai/src/etl/02_external_public_ingestion.py` |
 | DA-01~04 | BQ/KPI 정의 · grain · Star/Event · governance | `da/DA.md`, `analytics/03_kpi_views.sql`, `quality/analytics_checks.sql` |
 
 미적용 (데이터 규모/MVP): 파티셔닝(7), 클러스터링(8), CDC(11), Spark(12). Event 기반 Explain Fallback·p95 Latency는 PLANNED.

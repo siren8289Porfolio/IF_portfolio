@@ -71,6 +71,9 @@ IF_portfolio/
 │   ├── DA.md
 │   ├── DATA.md
 │   └── README.md
+├── de/
+│   ├── DE.md
+│   └── README.md
 ├── docker-compose.yml
 ├── ML.md
 ├── QA.md

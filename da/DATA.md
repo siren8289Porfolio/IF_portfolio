@@ -3,7 +3,7 @@
 - **백엔드(Spring)** 만 DB를 사용하며, **PostgreSQL** 단일 DB입니다.
 - **웹(Next.js)** · **앱(Expo)** 은 DB에 직접 연결하지 않고, Spring API(`http://localhost:8080` 등)를 호출합니다.
 - 따라서 웹·앱 모두 동일한 PostgreSQL 데이터(일자리, 신청자, 평가 기록 등)를 API를 통해 사용합니다.
-- 공공데이터는 운영 도메인(Applicant/Assessment/Health)과 분리된 `external_ref` Reference/Context 스키마와 `ai/data/external` 파일 snapshot으로 관리합니다.
+- 공공데이터는 운영 도메인(Applicant/Assessment/Health)과 분리된 `external_ref` Reference/Context 스키마와 `ai/data/external` 파일 snapshot으로 관리합니다. DE 스펙은 [`../de/DE.md`](../de/DE.md).
 - 분석(DA)은 `analytics` Star Schema와 `analytics.v_kpi_*` 뷰로 제품·Reference KPI를 재현하며, 외부 통계로 개인 score를 바꾸지 않습니다. 상세는 [`DA.md`](DA.md).
 - Backend(BE) API·상태전이·AI 연동 스펙은 [`../BE.md`](../BE.md).
 - GenAI 설명(Gemini) 스펙·score 불변 원칙은 [`../AI.md`](../AI.md).
