@@ -180,4 +180,4 @@ Spring Boot, Spring Transaction, Spring Data JPA, OpenAPI, OWASP ASVS, OWASP API
 
 - PRD_v0 / SRS_v0 / SDD_v0
 - [`spring/BACKEND_STRUCTURE.md`](spring/BACKEND_STRUCTURE.md)
-- DA.md / DE (`spring/db/external/`)
+- [`da/DA.md`](da/DA.md) / DE (`spring/db/external/`)

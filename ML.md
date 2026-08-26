@@ -163,4 +163,4 @@ Google ML Development Phases / Experiments / Stakeholders / Cloud MLOps CI·CD·
 
 ## 기준 문서
 
-- [`AI.md`](AI.md) · [`BE.md`](BE.md) · [`DA.md`](DA.md)
+- [`AI.md`](AI.md) · [`BE.md`](BE.md) · [`da/DA.md`](da/DA.md)

@@ -67,8 +67,10 @@ IF_portfolio/
 ├── .gitignore
 ├── AI.md
 ├── BE.md
-├── DA.md
-├── DATA.md
+├── da/
+│   ├── DA.md
+│   ├── DATA.md
+│   └── README.md
 ├── docker-compose.yml
 ├── ML.md
 ├── QA.md

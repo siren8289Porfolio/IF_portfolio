@@ -69,7 +69,7 @@ PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/ana
 
 ## DA KPI (제품·Reference)
 
-스펙: 루트 `DA.md`. 제품 KPI와 공공 Reference/Context KPI는 `analytics.v_kpi_*` 뷰와 `analytics.kpi_definition`으로 고정한다. KOSIS 등 외부 통계는 cohort context·품질 설명용이며 개인 score/grade를 바꾸지 않는다.
+스펙: `da/DA.md`. 제품 KPI와 공공 Reference/Context KPI는 `analytics.v_kpi_*` 뷰와 `analytics.kpi_definition`으로 고정한다. KOSIS 등 외부 통계는 cohort context·품질 설명용이며 개인 score/grade를 바꾸지 않는다.
 
 ```bash
 PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring \
@@ -111,6 +111,6 @@ docker compose up --build   # postgres 최초 기동 시 docker-init.sh → oper
 | 14 | 파이프라인 | `pipeline/run_all.sh` |
 | 15 | 실행 로그 | `pipeline_run_log` 테이블 |
 | DE-01~05 | 공공 Source Catalog / raw→serving / DQ / lineage / 실패 격리 | `external/`, `quality/external_checks.sql`, `ai/src/etl/02_external_public_ingestion.py` |
-| DA-01~04 | BQ/KPI 정의 · grain · Star/Event · governance | `DA.md`, `analytics/03_kpi_views.sql`, `quality/analytics_checks.sql` |
+| DA-01~04 | BQ/KPI 정의 · grain · Star/Event · governance | `da/DA.md`, `analytics/03_kpi_views.sql`, `quality/analytics_checks.sql` |
 
 미적용 (데이터 규모/MVP): 파티셔닝(7), 클러스터링(8), CDC(11), Spark(12). Event 기반 Explain Fallback·p95 Latency는 PLANNED.
