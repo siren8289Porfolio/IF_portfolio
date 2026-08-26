@@ -1,12 +1,39 @@
 # DE
 
-Data Engineering 관련 스펙을 `de/` 폴더로 모았습니다.
+Data Engineering (공공 Reference/Context) 구현은 전부 `de/` 안에 있습니다.
 
-- 스펙 문서: [`DE.md`](DE.md) (DE-01~05)
-- 구현 위치(이동하지 않음):
-  - `spring/db/external/`
-  - `spring/db/quality/external_checks.sql`
-  - `ai/src/etl/02_external_public_ingestion.py`
-  - `ai/src/etl/external_sources.json`
-- DB 역할 안내: [`../db/README.md`](../db/README.md)
-- DA KPI/거버넌스: [`../da/README.md`](../da/README.md)
+## 구조
+
+```text
+de/
+├── DE.md                              # DE-01~05 스펙
+├── etl/
+│   ├── external_public_ingestion.py   # raw→serving 파서/ETL
+│   └── external_sources.json          # Source field map
+├── external/                          # Source Catalog · serving DDL
+├── quality/external_checks.sql        # external_ref DQ gate
+├── data/external/                     # raw / validated / serving / lineage
+└── tests/test_external_public_ingestion.py
+```
+
+## 실행
+
+```bash
+# 스키마 (db + de/external)
+./db/apply-schema.sh
+
+# 파일 ETL (레포 루트 또는 de/)
+cd de
+PYTHONPATH=. python3 -m etl.external_public_ingestion \
+  --source self_support_region_code \
+  --input-file ../ai/data/raw/sample_region.xml \
+  --idempotency-key 2026-08
+
+# DQ
+PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f quality/external_checks.sql
+
+# 테스트
+PYTHONPATH=. python3 -m unittest discover -s tests
+```
+
+운영 OLTP·분석 mart는 [`../db/`](../db/) 를 보세요.

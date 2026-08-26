@@ -4,4 +4,4 @@
 
 - 스펙 문서: [`DA.md`](DA.md)
 - 저장소/파이프라인 요약: [`DATA.md`](DATA.md)
-- 구현 위치: `spring/db/analytics/`, `spring/db/quality/analytics_checks.sql`, `spring/db/external/`, `ai/src/etl/02_external_public_ingestion.py`
+- 구현 위치: `db/analytics/`, `db/quality/analytics_checks.sql`, `de/external/`, `de/etl/`

@@ -1,5 +1,5 @@
 -- 데이터 효율화 검증 (로드맵 0, 3)
--- 사용법: cd spring && PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/verify-db-efficiency.sql
+-- 사용법: PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/verify-db-efficiency.sql
 
 \echo '=== 운영 테이블·인덱스 ==='
 \dt public.*

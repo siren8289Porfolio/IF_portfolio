@@ -1,5 +1,5 @@
-# 스키마는 spring/db/ 에서 관리. ddl-auto=validate 로 엔티티↔DB 일치만 검증한다.
-# 최초 생성: cd spring && ./db/init-db.sh && ./db/apply-schema.sh --seed
+# 스키마는 루트 db/ (+ de/external) 에서 관리. ddl-auto=validate 로 엔티티↔DB 일치만 검증한다.
+# 최초 생성: ./db/init-db.sh && ./db/apply-schema.sh --seed  (레포 루트)
 # FastAPI(위험도/설명) 주소. ai 서버: cd ai && uvicorn src.app.main:app --port 8000
 app:
   ai:

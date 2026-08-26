@@ -19,8 +19,6 @@ ai/
     etl/
       00_convert_encoding.py
       01_build_job_risk_by_region.py
-      02_external_public_ingestion.py
-      external_sources.json
 
     app/
       main.py
@@ -65,32 +63,7 @@ python -m src.etl.01_build_job_risk_by_region
 
 ### 4. 공공 Reference/Context 수집
 
-외부 공공데이터는 개인 위험도 정답(label)이 아니라 Reference/Context다. 수집 산출물은 `ai/data/external` 아래에 raw snapshot, DQ 결과, lineage, serving parquet으로 분리 저장하며 Applicant/Assessment 트랜잭션과 연결하지 않는다.
-
-로컬 파일 snapshot으로 실행:
-
-```bash
-python3 -m src.etl.02_external_public_ingestion \
-  --source self_support_region_code \
-  --input-file data/raw/sample_region.xml \
-  --idempotency-key 2026-08
-```
-
-운영 API endpoint로 실행할 때는 공공데이터포털 catalog URL이 아니라 실제 호출 endpoint URL을 넘긴다. 서비스키는 코드와 로그에 남기지 않고 환경변수나 secret store에서 주입한다.
-
-```bash
-python3 -m src.etl.02_external_public_ingestion \
-  --source self_support_region_code \
-  --url "$PUBLIC_DATA_API_URL" \
-  --idempotency-key 2026-08-23T00
-```
-
-생성 결과:
-
-- `data/external/raw/*.jsonl`: immutable raw snapshot
-- `data/external/validated/*_dq.json`: DQ gate 결과
-- `data/external/lineage/*.json`: source→raw→serving lineage
-- `data/external/serving/*.parquet`: BE/DA 소비용 Reference/Context snapshot
+공공 DE 파이프라인(코드·DDL·DQ·테스트)은 루트 [`de/`](../de/) 로 분리했습니다. 실행·스펙은 [`de/README.md`](../de/README.md), [`de/DE.md`](../de/DE.md)를 보세요.
 
 ### 5. FastAPI 실행
 
@@ -116,7 +89,8 @@ ML 실험 공간(미서빙): `ai/ml/` — 승인 gate 전 `/score`에 연결하�
 PYTHONPATH=. python3 -m unittest discover -s tests
 ```
 
-포함: 공공 ingestion, AI score 불변성·guardrails·fallback (`tests/test_ai_invariants.py`).
+포함: AI score 불변성·guardrails·fallback (`tests/test_ai_invariants.py`).  
+공공 ingestion 테스트는 `de/tests/` 에 있습니다.
 
 ### 7. 다음 확장 포인트
 

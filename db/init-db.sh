@@ -2,9 +2,9 @@
 # 로컬 PostgreSQL에 if_user / if_spring DB를 만든다.
 # application.yml 및 docker-compose.yml 과 동일한 계정·DB명을 사용한다.
 #
-# 사용법 (spring 폴더 기준):
+# 사용법 (레포 루트 기준):
 #   ./db/init-db.sh
-#   ./gradlew bootRun
+#   cd spring && ./gradlew bootRun
 #
 # Docker로 띄울 경우 이 스크립트 없이:
 #   docker compose up --build   (레포 루트에서)
@@ -55,7 +55,7 @@ echo ""
 echo "완료. 다음 단계:"
 echo "  ./db/apply-schema.sh          # 전체 스키마 적용"
 echo "  ./db/apply-schema.sh --seed   # + 개발 시드"
-echo "  ./gradlew bootRun"
+echo "  cd spring && ./gradlew bootRun"
 echo ""
 echo "연결 정보:"
 echo "  jdbc:postgresql://${PG_HOST}:${PG_PORT}/${DB_NAME}"

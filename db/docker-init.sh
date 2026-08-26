@@ -2,6 +2,7 @@
 # docker compose postgres 최초 기동 시 /docker-entrypoint-initdb.d/ 에서 실행된다.
 set -euo pipefail
 DB_DIR="/docker-entrypoint-initdb.d/db"
+DE_DIR="/docker-entrypoint-initdb.d/de"
 
 run_sql() {
   echo "==> $(basename "$1")"
@@ -14,7 +15,7 @@ for f in "$DB_DIR"/operational/0*.sql; do
   run_sql "$f"
 done
 
-for f in "$DB_DIR"/external/0*.sql; do
+for f in "$DE_DIR"/external/0*.sql; do
   [[ -f "$f" ]] || continue
   run_sql "$f"
 done

@@ -3,13 +3,18 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
+DE_ROOT = Path(__file__).resolve().parents[1]
+if str(DE_ROOT) not in sys.path:
+  sys.path.insert(0, str(DE_ROOT))
+
 try:
   import pandas as pd
-  ingestion = importlib.import_module("src.etl.02_external_public_ingestion")
+  ingestion = importlib.import_module("etl.external_public_ingestion")
 except ModuleNotFoundError as exc:
   pd = None
   ingestion = None

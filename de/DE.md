@@ -23,11 +23,11 @@ Source Catalog → extract → raw immutable snapshot
 
 | Layer | Path |
 | --- | --- |
-| Source contract / serving DDL | `spring/db/external/` |
-| DQ gate | `spring/db/quality/external_checks.sql` |
-| File ETL + XML/JSON/CSV parser | `ai/src/etl/02_external_public_ingestion.py` |
-| Source field map | `ai/src/etl/external_sources.json` |
-| File snapshot root | `ai/data/external/` (`raw`, `validated`, `serving`, `manifests`, `lineage`) |
+| Source contract / serving DDL | `de/external/` |
+| DQ gate | `de/quality/external_checks.sql` |
+| File ETL + XML/JSON/CSV parser | `de/etl/external_public_ingestion.py` |
+| Source field map | `de/etl/external_sources.json` |
+| File snapshot root | `de/data/external/` (`raw`, `validated`, `serving`, `manifests`, `lineage`) |
 
 ---
 
@@ -36,9 +36,9 @@ Source Catalog → extract → raw immutable snapshot
 | ID | 내용 | 산출물 | Evidence |
 | --- | --- | --- | --- |
 | DE-01 | Source Catalog | `external_ref.source_catalog`, `external_sources.json`, `external/03_seed_sources.sql` | IMPLEMENTED |
-| DE-02 | raw → serving 파이프라인 | `02_external_public_ingestion.py`, `raw_external_snapshot` → serving masters | IMPLEMENTED |
+| DE-02 | raw → serving 파이프라인 | `external_public_ingestion.py`, `raw_external_snapshot` → serving masters | IMPLEMENTED |
 | DE-03 | DQ gate | `quality/external_checks.sql`, run status `DQ_FAILED` | IMPLEMENTED |
-| DE-04 | Lineage / manifest | `external_ref.lineage_event`, `ai/data/external/lineage|manifests` | IMPLEMENTED |
+| DE-04 | Lineage / manifest | `external_ref.lineage_event`, `de/data/external/lineage|manifests` | IMPLEMENTED |
 | DE-05 | 실패 격리 | `is_required_for_core=false`, 운영 테이블과 FK 비연결, FAIL 시 serving 중단만 | IMPLEMENTED |
 
 ---
@@ -66,20 +66,20 @@ Source Catalog → extract → raw immutable snapshot
 
 ## 4. Pipeline & Parser (DE-02)
 
-`02_external_public_ingestion.py` 파서 계약:
+`external_public_ingestion.py` 파서 계약:
 
 1. **extract** — `--input-file` 또는 `--url` (카탈로그 페이지가 아닌 실제 endpoint)
 2. **parse** — `OPENAPI_XML` / `OPENAPI_JSON`·`KOSIS` / `FILE_*`(CSV) payload → row dict 목록
 3. **normalize** — `external_sources.json` field_map으로 표준 컬럼 매핑
 4. **DQ** — required_fields · 타입·범위 검사; 실패 시 run `DQ_FAILED` / `SCHEMA_DRIFT`
-5. **serving** — 통과 row만 parquet/serving 경로 기록 (DB serving은 `spring/db/external/` 스키마와 정합)
+5. **serving** — 통과 row만 parquet/serving 경로 기록 (DB serving은 `de/external/` 스키마와 정합)
 6. **idempotency** — `(source_id, idempotency_key)` 유일; 동일 키 재실행은 재현 가능해야 함
 
 ```bash
-cd ai
-PYTHONPATH=. python3 -m src.etl.02_external_public_ingestion \
+cd de
+PYTHONPATH=. python3 -m etl.external_public_ingestion \
   --source self_support_region_code \
-  --input-file data/raw/sample_region.xml \
+  --input-file ../ai/data/raw/sample_region.xml \
   --idempotency-key 2026-08
 ```
 
@@ -87,13 +87,13 @@ PYTHONPATH=. python3 -m src.etl.02_external_public_ingestion \
 
 ## 5. DQ Gate (DE-03)
 
-`spring/db/quality/external_checks.sql`은 **external_ref only**다.
+`de/quality/external_checks.sql`은 **external_ref only**다.
 
 - natural key 중복 금지 (`source_name`, `source_key`)
 - 필수 식별자 NULL/blank 금지
 - 공고 기간 역전·모집인원 음수 등 domain rule
 
-운영 도메인 `quality/checks.sql`과 분리한다. DQ FAIL은 외부 serving 반영만 막는다.
+운영 도메인 `db/quality/checks.sql`과 분리한다. DQ FAIL은 외부 serving 반영만 막는다.
 
 ---
 
@@ -103,7 +103,7 @@ PYTHONPATH=. python3 -m src.etl.02_external_public_ingestion \
 | --- | --- |
 | `external_ref.lineage_event` | from_layer → to_layer, row_count, checksum |
 | `external_ref.external_ingestion_run` | run status, accepted/rejected counts |
-| `ai/data/external/manifests` · `lineage` | 파일 파이프라인 재현 메타 |
+| `de/data/external/manifests` · `lineage` | 파일 파이프라인 재현 메타 |
 
 raw snapshot(`raw_external_snapshot`)은 checksum 기준 immutable이다.
 
@@ -140,16 +140,15 @@ raw snapshot(`raw_external_snapshot`)은 checksum 기준 immutable이다.
 스키마 적용:
 
 ```bash
-cd spring
 ./db/apply-schema.sh
-PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/external_checks.sql
+PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f de/quality/external_checks.sql
 ```
 
 ---
 
 ## 9. Related Specs
 
-- DB 구조·파이프라인 안내: [`../db/README.md`](../db/README.md), `spring/db/README.md`
+- DB 구조·파이프라인 안내: [`../db/README.md`](../db/README.md)
 - DA KPI / grain: [`../da/DA.md`](../da/DA.md)
 - 저장소 요약: [`../da/DATA.md`](../da/DATA.md)
 - QA release gate: [`../QA.md`](../QA.md)

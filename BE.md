@@ -139,7 +139,7 @@ idempotency (SRS Q-001): compute-risk 재실행 시 **기존 AIRiskResult 덮어
 
 - 목록: pagination + `assessedAt DESC, id DESC` stable sort — IMPLEMENTED
 - N+1 방지: DTO projection + query count 테스트 — IMPLEMENTED
-- Index / EXPLAIN: [`BACKEND_STRUCTURE.md`](spring/BACKEND_STRUCTURE.md), [`spring/db/`](spring/db/) — IMPLEMENTED (인덱스), 측정 증거는 문서 기준
+- Index / EXPLAIN: [`BACKEND_STRUCTURE.md`](spring/BACKEND_STRUCTURE.md), [`db/`](db/) — IMPLEMENTED (인덱스), 측정 증거는 문서 기준
 
 ---
 
@@ -180,4 +180,4 @@ Spring Boot, Spring Transaction, Spring Data JPA, OpenAPI, OWASP ASVS, OWASP API
 
 - PRD_v0 / SRS_v0 / SDD_v0
 - [`spring/BACKEND_STRUCTURE.md`](spring/BACKEND_STRUCTURE.md)
-- [`da/DA.md`](da/DA.md) / DE (`spring/db/external/`)
+- [`da/DA.md`](da/DA.md) / DE ([`de/`](de/))

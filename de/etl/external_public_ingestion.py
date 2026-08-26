@@ -6,7 +6,7 @@ Pipeline:
   -> DQ gate -> serving parquet -> lineage/manifest
 
 Public datasets are Reference/Context only. This script writes under
-ai/data/external and does not touch Applicant/Assessment runtime tables.
+de/data/external and does not touch Applicant/Assessment runtime tables.
 """
 
 from __future__ import annotations
@@ -28,8 +28,9 @@ from typing import Any
 import pandas as pd
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_EXTERNAL_DIR = PROJECT_ROOT / "data" / "external"
+# de/etl/ → de/
+DE_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_EXTERNAL_DIR = DE_ROOT / "data" / "external"
 CATALOG_PATH = Path(__file__).with_name("external_sources.json")
 
 

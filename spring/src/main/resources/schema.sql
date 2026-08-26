@@ -1,3 +1,3 @@
--- 스키마는 spring/db/ 가 단일 소스입니다.
--- 적용: cd spring && ./db/apply-schema.sh
+-- 스키마는 루트 db/ (+ de/external) 가 단일 소스입니다.
+-- 적용: ./db/apply-schema.sh  (레포 루트)
 -- 이 파일은 Spring Boot sql.init 호환용 placeholder (비어 있음).

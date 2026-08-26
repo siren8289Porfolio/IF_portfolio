@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# spring/db/ 아래 SQL을 순서대로 적용한다 (로드맵: 설계 → 인덱스 → 제약 → 집계 → 분석).
+# db/ + de/external SQL을 순서대로 적용한다 (로드맵: 설계 → 인덱스 → 제약 → 집계 → 분석).
 #
-# 사용법:
-#   cd spring && ./db/apply-schema.sh
-#   cd spring && ./db/apply-schema.sh --seed      # 개발 시드 포함
-#   cd spring && ./db/apply-schema.sh --pipeline # 스키마 + 파이프라인 1회 실행
+# 사용법 (레포 루트 기준):
+#   ./db/apply-schema.sh
+#   ./db/apply-schema.sh --seed      # 개발 시드 포함
+#   ./db/apply-schema.sh --pipeline # 스키마 + 파이프라인 1회 실행
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DE_DIR="$(cd "$SCRIPT_DIR/../de" && pwd)"
 DB_NAME="${DB_NAME:-if_spring}"
 DB_USER="${DB_USER:-if_user}"
 PG_HOST="${PGHOST:-localhost}"
@@ -47,7 +48,7 @@ for f in "$SCRIPT_DIR"/operational/0*.sql; do
   run_sql "$f"
 done
 
-for f in "$SCRIPT_DIR"/external/0*.sql; do
+for f in "$DE_DIR"/external/0*.sql; do
   [[ -f "$f" ]] || continue
   run_sql "$f"
 done
@@ -68,5 +69,5 @@ echo ""
 echo "완료. 검증:"
 echo "  psql ... -f db/verify-db-efficiency.sql"
 echo "  psql ... -f db/quality/checks.sql"
-echo "  psql ... -f db/quality/external_checks.sql"
+echo "  psql ... -f de/quality/external_checks.sql"
 echo "  psql ... -f db/quality/analytics_checks.sql"

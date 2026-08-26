@@ -58,7 +58,7 @@ IF DA의 두 축:
 | External DQ Pass Rate | DQ gate 통과 row 비율 | `analytics.v_kpi_external_dq_pass_rate` | DESIGNED |
 | Context Coverage | 분석 대상 지역·기간 중 KOSIS Context 존재 비율 | `analytics.v_kpi_context_coverage` | DESIGNED |
 
-상세 필드·파이프라인·provenance는 [`de/DE.md`](../de/DE.md) / `spring/db/external/` 과 동기화한다.
+상세 필드·파이프라인·provenance는 [`de/DE.md`](../de/DE.md) / `de/external/` 과 동기화한다.
 
 ---
 
@@ -71,13 +71,13 @@ IF DA의 두 축:
 
 **금지:** KOSIS 집단 평균으로 개인 Applicant score/grade 변경 또는 개인 취업 가능성 추론.
 
-Grain 검증: `spring/db/quality/analytics_checks.sql`
+Grain 검증: `db/quality/analytics_checks.sql`
 
 ---
 
 ## 6. Data Model for Analytics
 
-Star Schema (`spring/db/analytics/`):
+Star Schema (`db/analytics/`):
 
 - Fact: `analytics.fact_assessment` (assessment_id, assessed_at, status, risk_percent, risk_grade, org_id, job_id, …)
 - Dim: `dim_date`, `dim_organization`, `dim_job`, `dim_applicant`, `dim_risk_grade`
@@ -115,7 +115,7 @@ Explain Fallback Rate·p95 Latency는 이 이벤트 계층이 있어야 IMPLEMEN
 | --- | --- | --- |
 | DA-01 | Business Question & KPI Definition | 본 문서 §2–4, `kpi_definition` |
 | DA-02 | Analysis Design & Grain | 본 문서 §5, `analytics_checks.sql` |
-| DA-03 | Data / Event Architecture | `spring/db/analytics/*`, §6–7 |
+| DA-03 | Data / Event Architecture | `db/analytics/*`, §6–7 |
 | DA-04 | Governance (인과 과장 금지, privacy, version) | 본 문서 §8, analytics 품질 가드 |
 
 ---
@@ -164,7 +164,6 @@ Explain Fallback Rate·p95 Latency는 이 이벤트 계층이 있어야 IMPLEMEN
 ### 실행
 
 ```bash
-cd spring
 ./db/apply-schema.sh
 ./db/pipeline/run_all.sh
 PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring -f db/quality/analytics_checks.sql
@@ -178,4 +177,4 @@ PGPASSWORD=change-me psql -h localhost -U if_user -d if_spring \
 
 - PRD_v0
 - SRS_v0
-- DE — Data Engineering Specification ([`de/DE.md`](../de/DE.md), `spring/db/external/`, `ai/src/etl/02_external_public_ingestion.py`)
+- DE — Data Engineering Specification ([`de/DE.md`](../de/DE.md), `de/external/`, `de/etl/`)

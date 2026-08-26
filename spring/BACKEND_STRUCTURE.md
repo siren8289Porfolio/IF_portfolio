@@ -123,23 +123,26 @@ com.example.demo
 
 #### 6-1. 로컬 DB 최초 생성 (한 번만)
 
-DB는 **`spring/db/`** 가 단일 소스다. Hibernate는 `ddl-auto: validate`만 수행한다.
+DB는 루트 **`db/`** (+ 공공 Reference `de/external/`) 가 단일 소스다. Hibernate는 `ddl-auto: validate`만 수행한다.
 
 ```
-spring/db/
+db/
 ├── operational/     운영 DB (정규화 6테이블 + pipeline_run_log)
 ├── analytics/       Star Schema (dim_* + fact_assessment)
 ├── quality/         데이터 품질 SQL 테스트
 ├── pipeline/        증분 적재 → 검사 → MV 갱신
 ├── init-db.sh       Postgres 계정·DB 생성
-└── apply-schema.sh  SQL 일괄 적용
+└── apply-schema.sh  SQL 일괄 적용 (de/external 포함)
+de/
+├── external/        공공 Reference/Context DDL
+└── quality/         external_checks.sql
 ```
 
 ```bash
-cd spring
+# 레포 루트에서
 chmod +x db/*.sh db/pipeline/*.sh
 ./db/init-db.sh                    # DB 생성 + 스키마 + 시드
-./gradlew bootRun
+cd spring && ./gradlew bootRun
 
 # 스키마만 재적용
 ./db/apply-schema.sh
