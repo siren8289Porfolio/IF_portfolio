@@ -1,6 +1,7 @@
 # Spring DB (PostgreSQL) — 데이터 효율화 로드맵 기반
 
 백엔드 DB는 **`spring/db/`** 가 단일 소스(source of truth)다.  
+포트폴리오 탐색용 진입점은 루트 [`db/README.md`](../../db/README.md).  
 Hibernate `ddl-auto=validate`만 쓰고, **테이블·인덱스·분석 mart·집계 MV는 SQL로 관리**한다.
 
 ## 디렉터리 구조

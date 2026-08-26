@@ -4,7 +4,7 @@
 
 > **IF는 대시보드 목록 조회의 N+1 가능성을 DTO Projection으로 차단하고, PostgreSQL 인덱스·Materialized View·Star Schema·증분 적재 구조를 추가해 조회 성능과 데이터 분석 확장성을 함께 개선한 프로젝트입니다.**
 
-데이터 분석 관련 문서는 [`da/README.md`](da/README.md), Data Engineering은 [`de/README.md`](de/README.md) 아래로 정리했습니다.
+데이터 분석 관련 문서는 [`da/README.md`](da/README.md), Data Engineering은 [`de/README.md`](de/README.md), DB 진입점은 [`db/README.md`](db/README.md) 아래로 정리했습니다.
 
 ---
 
